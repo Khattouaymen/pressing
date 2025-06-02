@@ -40,8 +40,23 @@ export const ClientManagement = () => {
       </div>
     );
   }
+  // Adapter les clients professionnels pour avoir la même structure que les clients individuels
+  const adaptedProfessionalClients = professionalClients.map(profClient => ({
+    id: profClient.id,
+    firstName: profClient.contactName.split(' ')[0] || '',
+    lastName: profClient.contactName.split(' ').slice(1).join(' ') || '',
+    phone: profClient.phone,
+    email: profClient.email,
+    address: profClient.billingAddress,
+    type: 'professional' as const,
+    companyName: profClient.companyName,
+    createdAt: profClient.createdAt,
+    totalOrders: profClient.totalOrders,
+    totalSpent: profClient.totalSpent,
+    siret: profClient.siret
+  }));
 
-  const allClients = [...clients, ...professionalClients];
+  const allClients = [...clients, ...adaptedProfessionalClients];
 
   const filteredClients = allClients.filter(client =>
     `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -418,10 +433,9 @@ export const ClientManagement = () => {
             <CardTitle className="text-sm font-medium">Clients Professionnels</CardTitle>
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{professionalClientsFiltered.length}</div>
+          <CardContent>            <div className="text-2xl font-bold">{professionalClientsFiltered.length}</div>
             <p className="text-xs text-muted-foreground">
-              Total: {clients.filter(c => c.type === 'professional').length} clients
+              Total: {adaptedProfessionalClients.length} clients
             </p>
           </CardContent>
         </Card>
