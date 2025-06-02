@@ -8,11 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Search, Users, Building2, Phone, Mail, MapPin, Calendar, UserCheck } from "lucide-react";
-import { useClients, Client } from '@/hooks/useApiDatabase';
+import { useClients, useProfessionalClients, Client } from '@/hooks/useApiDatabase';
 
 export const ClientManagement = () => {
   // Hooks de base de données
   const { clients, loading, addClient } = useClients();
+  const { clients: professionalClients, loading: loadingProfessionalClients } = useProfessionalClients();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingClient, setIsAddingClient] = useState(false);
@@ -30,7 +31,7 @@ export const ClientManagement = () => {
     siret: ''
   });
   // Affichage conditionnel pendant le chargement
-  if (loading) {
+  if (loading || loadingProfessionalClients) {
     return (
       <div className="space-y-6">
         <div className="text-center py-8">
@@ -40,7 +41,9 @@ export const ClientManagement = () => {
     );
   }
 
-  const filteredClients = clients.filter(client =>
+  const allClients = [...clients, ...professionalClients];
+
+  const filteredClients = allClients.filter(client =>
     `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
     client.phone.includes(searchTerm) ||
@@ -57,7 +60,7 @@ export const ClientManagement = () => {
   );
 
   const individualClients = filteredClients.filter(c => c.type === 'individual');
-  const professionalClients = filteredClients.filter(c => c.type === 'professional');
+  const professionalClientsFiltered = filteredClients.filter(c => c.type === 'professional');
   const handleAddClient = async () => {
     try {
       if (clientFormMode === 'create') {
@@ -416,7 +419,7 @@ export const ClientManagement = () => {
             <Building2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{professionalClients.length}</div>
+            <div className="text-2xl font-bold">{professionalClientsFiltered.length}</div>
             <p className="text-xs text-muted-foreground">
               Total: {clients.filter(c => c.type === 'professional').length} clients
             </p>
@@ -429,7 +432,7 @@ export const ClientManagement = () => {
         <TabsList>
           <TabsTrigger value="all">Tous les clients ({filteredClients.length})</TabsTrigger>
           <TabsTrigger value="individual">Particuliers ({individualClients.length})</TabsTrigger>
-          <TabsTrigger value="professional">Professionnels ({professionalClients.length})</TabsTrigger>
+          <TabsTrigger value="professional">Professionnels ({professionalClientsFiltered.length})</TabsTrigger>
         </TabsList>
 
         <TabsContent value="all">
@@ -450,7 +453,7 @@ export const ClientManagement = () => {
 
         <TabsContent value="professional">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {professionalClients.map((client) => (
+            {professionalClientsFiltered.map((client) => (
               <ClientCard key={client.id} client={client} />
             ))}
           </div>
