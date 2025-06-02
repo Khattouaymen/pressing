@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Package, Clock, CheckCircle, Printer, QrCode, Euro } from "lucide-react";
+import { Plus, Search, Package, Clock, CheckCircle, Printer, QrCode, Euro, UserCheck } from "lucide-react";
 
 interface Order {
   id: string;
@@ -25,10 +26,33 @@ interface Order {
   originalPrice?: number;
 }
 
+interface Client {
+  id: string;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  email: string;
+  address: string;
+  type: 'individual' | 'professional';
+  companyName?: string;
+}
+
 export const OrderManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [clientMode, setClientMode] = useState<'search' | 'create'>('search');
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null);
+  const [newClient, setNewClient] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    address: '',
+    type: 'individual' as 'individual' | 'professional',
+    companyName: ''
+  });
   const [newOrder, setNewOrder] = useState({
     clientId: '',
     clientName: '',
@@ -43,6 +67,38 @@ export const OrderManagement = () => {
     pressing: 3.50,
     'cleaning-pressing': 8.00
   };
+
+  // Mock clients data
+  const [clients] = useState<Client[]>([
+    {
+      id: "CLI001",
+      firstName: "Marie",
+      lastName: "Dubois",
+      phone: "06 12 34 56 78",
+      email: "marie.dubois@email.com",
+      address: "123 Rue de la Paix, 75001 Paris",
+      type: 'individual'
+    },
+    {
+      id: "CLI002",
+      firstName: "Pierre",
+      lastName: "Martin",
+      phone: "06 98 76 54 32",
+      email: "pierre.martin@email.com",
+      address: "456 Avenue des Champs, 75008 Paris",
+      type: 'individual'
+    },
+    {
+      id: "PRO001",
+      firstName: "Jean",
+      lastName: "Directeur",
+      phone: "01 23 45 67 89",
+      email: "contact@hotelroyal.com",
+      address: "789 Boulevard Haussmann, 75009 Paris",
+      type: 'professional',
+      companyName: "Hotel Royal"
+    }
+  ]);
 
   // Mock data
   const [orders] = useState<Order[]>([
@@ -88,6 +144,16 @@ export const OrderManagement = () => {
     }
   ]);
 
+  // Filter clients for search
+  const searchResults = clients.filter(client =>
+    clientSearchTerm && (
+      `${client.firstName} ${client.lastName}`.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+      client.email.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+      client.phone.includes(clientSearchTerm) ||
+      (client.companyName && client.companyName.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+    )
+  );
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case "received": return "bg-blue-100 text-blue-800 border-blue-200";
@@ -130,9 +196,27 @@ export const OrderManagement = () => {
   };
 
   const handleCreateOrder = () => {
+    let clientInfo;
+    
+    if (clientMode === 'search' && selectedClient) {
+      clientInfo = {
+        clientId: selectedClient.id,
+        clientName: selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`
+      };
+    } else {
+      // Créer nouveau client
+      const newClientId = `CLI${String(clients.length + 1).padStart(3, '0')}`;
+      clientInfo = {
+        clientId: newClientId,
+        clientName: newClient.companyName || `${newClient.firstName} ${newClient.lastName}`
+      };
+      console.log('Nouveau client créé:', { ...newClient, id: newClientId });
+    }
+
     const trackingCode = generateTrackingCode();
     console.log('Creating order:', {
       ...newOrder,
+      ...clientInfo,
       id: trackingCode,
       totalAmount: calculateTotal(),
       createdAt: new Date().toISOString(),
@@ -140,7 +224,23 @@ export const OrderManagement = () => {
       paymentStatus: 'paid'
     });
     
-    // Reset form
+    resetForm();
+    setIsCreatingOrder(false);
+  };
+
+  const resetForm = () => {
+    setClientMode('search');
+    setClientSearchTerm("");
+    setSelectedClient(null);
+    setNewClient({
+      firstName: '',
+      lastName: '',
+      phone: '',
+      email: '',
+      address: '',
+      type: 'individual',
+      companyName: ''
+    });
     setNewOrder({
       clientId: '',
       clientName: '',
@@ -149,17 +249,21 @@ export const OrderManagement = () => {
       isExceptionalPrice: false,
       exceptionalAmount: 0
     });
-    setIsCreatingOrder(false);
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsCreatingOrder(open);
+    if (!open) {
+      resetForm();
+    }
   };
 
   const handlePrintReceipt = (order: Order) => {
     console.log('Printing receipt for order:', order.id);
-    // Ici on intégrerait l'impression
   };
 
   const handlePrintLabels = (order: Order) => {
     console.log('Printing labels for order:', order.id);
-    // Ici on intégrerait l'impression des étiquettes
   };
 
   const filteredOrders = orders.filter(order => {
@@ -178,98 +282,262 @@ export const OrderManagement = () => {
           <p className="text-gray-600">Créez et suivez les commandes de pressing</p>
         </div>
         
-        <Dialog open={isCreatingOrder} onOpenChange={setIsCreatingOrder}>
+        <Dialog open={isCreatingOrder} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
               Nouvelle Commande
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
+          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Créer une nouvelle commande</DialogTitle>
               <DialogDescription>
-                Enregistrez une nouvelle commande pour un client
+                Recherchez un client existant ou créez un nouveau client, puis enregistrez la commande
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-6">
-              {/* Sélection client */}
+              {/* Sélection/Création client */}
               <div>
-                <Label htmlFor="client">Client</Label>
-                <Select value={newOrder.clientId} onValueChange={(value) => setNewOrder({...newOrder, clientId: value})}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Sélectionner un client" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="CLI001">Marie Dubois (CLI001)</SelectItem>
-                    <SelectItem value="CLI002">Pierre Martin (CLI002)</SelectItem>
-                    <SelectItem value="PRO001">Hotel Royal (PRO001)</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Service */}
-              <div>
-                <Label htmlFor="service">Type de service</Label>
-                <Select value={newOrder.service} onValueChange={(value: any) => setNewOrder({...newOrder, service: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="pressing">
-                      <div className="flex justify-between items-center w-full">
-                        <span>Repassage uniquement</span>
-                        <span className="text-gray-500 ml-4">€{STANDARD_PRICES.pressing}/pièce</span>
+                <Label className="text-base font-medium">Client</Label>
+                <Tabs value={clientMode} onValueChange={(value: any) => setClientMode(value)} className="w-full mt-2">
+                  <TabsList className="grid w-full grid-cols-2">
+                    <TabsTrigger value="search" className="flex items-center gap-2">
+                      <Search className="w-4 h-4" />
+                      Rechercher Client
+                    </TabsTrigger>
+                    <TabsTrigger value="create" className="flex items-center gap-2">
+                      <Plus className="w-4 h-4" />
+                      Nouveau Client
+                    </TabsTrigger>
+                  </TabsList>
+                  
+                  <TabsContent value="search" className="space-y-4 mt-4">
+                    <div>
+                      <Label htmlFor="clientSearch">Rechercher un client existant</Label>
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                        <Input
+                          id="clientSearch"
+                          placeholder="Nom, téléphone, email ou entreprise..."
+                          value={clientSearchTerm}
+                          onChange={(e) => setClientSearchTerm(e.target.value)}
+                          className="pl-10"
+                        />
                       </div>
-                    </SelectItem>
-                    <SelectItem value="cleaning-pressing">
-                      <div className="flex justify-between items-center w-full">
-                        <span>Nettoyage + Repassage</span>
-                        <span className="text-gray-500 ml-4">€{STANDARD_PRICES['cleaning-pressing']}/pièce</span>
+                    </div>
+                    
+                    {clientSearchTerm && (
+                      <div className="max-h-48 overflow-y-auto border rounded-lg">
+                        {searchResults.length > 0 ? (
+                          <div className="space-y-1 p-2">
+                            {searchResults.map((client) => (
+                              <div
+                                key={client.id}
+                                className={`p-3 border rounded cursor-pointer transition-colors ${
+                                  selectedClient?.id === client.id
+                                    ? 'bg-blue-50 border-blue-200'
+                                    : 'hover:bg-gray-50'
+                                }`}
+                                onClick={() => setSelectedClient(client)}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div>
+                                    <p className="font-medium">
+                                      {client.firstName} {client.lastName}
+                                    </p>
+                                    {client.companyName && (
+                                      <p className="text-sm text-blue-600">{client.companyName}</p>
+                                    )}
+                                    <p className="text-sm text-gray-600">{client.phone}</p>
+                                  </div>
+                                  <Badge variant={client.type === 'professional' ? 'default' : 'secondary'}>
+                                    {client.type === 'professional' ? 'Pro' : 'Particulier'}
+                                  </Badge>
+                                </div>
+                                {selectedClient?.id === client.id && (
+                                  <div className="mt-2 flex items-center text-sm text-blue-600">
+                                    <UserCheck className="w-4 h-4 mr-1" />
+                                    Client sélectionné
+                                  </div>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="p-4 text-center text-gray-500">
+                            Aucun client trouvé
+                          </div>
+                        )}
                       </div>
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                    )}
+                    
+                    {!clientSearchTerm && (
+                      <div className="text-center text-gray-500 py-6">
+                        Commencez à taper pour rechercher un client
+                      </div>
+                    )}
+                  </TabsContent>
+                  
+                  <TabsContent value="create" className="space-y-4 mt-4">
+                    <Tabs value={newClient.type} onValueChange={(value: any) => setNewClient({...newClient, type: value})}>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="individual">Particulier</TabsTrigger>
+                        <TabsTrigger value="professional">Professionnel</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="individual" className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="firstName">Prénom</Label>
+                            <Input
+                              id="firstName"
+                              value={newClient.firstName}
+                              onChange={(e) => setNewClient({...newClient, firstName: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="lastName">Nom</Label>
+                            <Input
+                              id="lastName"
+                              value={newClient.lastName}
+                              onChange={(e) => setNewClient({...newClient, lastName: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="professional" className="space-y-3">
+                        <div>
+                          <Label htmlFor="companyName">Raison sociale</Label>
+                          <Input
+                            id="companyName"
+                            value={newClient.companyName}
+                            onChange={(e) => setNewClient({...newClient, companyName: e.target.value})}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="firstNamePro">Prénom contact</Label>
+                            <Input
+                              id="firstNamePro"
+                              value={newClient.firstName}
+                              onChange={(e) => setNewClient({...newClient, firstName: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="lastNamePro">Nom contact</Label>
+                            <Input
+                              id="lastNamePro"
+                              value={newClient.lastName}
+                              onChange={(e) => setNewClient({...newClient, lastName: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="phone">Téléphone</Label>
+                        <Input
+                          id="phone"
+                          value={newClient.phone}
+                          onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="email">Email</Label>
+                        <Input
+                          id="email"
+                          type="email"
+                          value={newClient.email}
+                          onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="address">Adresse</Label>
+                      <Input
+                        id="address"
+                        value={newClient.address}
+                        onChange={(e) => setNewClient({...newClient, address: e.target.value})}
+                      />
+                    </div>
+                  </TabsContent>
+                </Tabs>
               </div>
 
-              {/* Nombre de pièces */}
-              <div>
-                <Label htmlFor="pieces">Nombre de pièces</Label>
-                <Input
-                  id="pieces"
-                  type="number"
-                  min="1"
-                  value={newOrder.pieces}
-                  onChange={(e) => setNewOrder({...newOrder, pieces: parseInt(e.target.value) || 1})}
-                />
-              </div>
+              <Separator />
 
-              {/* Prix exceptionnel */}
-              <div className="space-y-3">
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="checkbox"
-                    id="exceptionalPrice"
-                    checked={newOrder.isExceptionalPrice}
-                    onChange={(e) => setNewOrder({...newOrder, isExceptionalPrice: e.target.checked})}
-                  />
-                  <Label htmlFor="exceptionalPrice">Appliquer un prix exceptionnel</Label>
-                </div>
+              {/* Détails de la commande */}
+              <div className="space-y-4">
+                <Label className="text-base font-medium">Détails de la commande</Label>
                 
-                {newOrder.isExceptionalPrice && (
-                  <div>
-                    <Label htmlFor="exceptionalAmount">Montant exceptionnel</Label>
-                    <Input
-                      id="exceptionalAmount"
-                      type="number"
-                      step="0.50"
-                      min="0"
-                      value={newOrder.exceptionalAmount}
-                      onChange={(e) => setNewOrder({...newOrder, exceptionalAmount: parseFloat(e.target.value) || 0})}
+                {/* Service */}
+                <div>
+                  <Label htmlFor="service">Type de service</Label>
+                  <Select value={newOrder.service} onValueChange={(value: any) => setNewOrder({...newOrder, service: value})}>
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="pressing">
+                        <div className="flex justify-between items-center w-full">
+                          <span>Repassage uniquement</span>
+                          <span className="text-gray-500 ml-4">€{STANDARD_PRICES.pressing}/pièce</span>
+                        </div>
+                      </SelectItem>
+                      <SelectItem value="cleaning-pressing">
+                        <div className="flex justify-between items-center w-full">
+                          <span>Nettoyage + Repassage</span>
+                          <span className="text-gray-500 ml-4">€{STANDARD_PRICES['cleaning-pressing']}/pièce</span>
+                        </div>
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Nombre de pièces */}
+                <div>
+                  <Label htmlFor="pieces">Nombre de pièces</Label>
+                  <Input
+                    id="pieces"
+                    type="number"
+                    min="1"
+                    value={newOrder.pieces}
+                    onChange={(e) => setNewOrder({...newOrder, pieces: parseInt(e.target.value) || 1})}
+                  />
+                </div>
+
+                {/* Prix exceptionnel */}
+                <div className="space-y-3">
+                  <div className="flex items-center space-x-2">
+                    <input
+                      type="checkbox"
+                      id="exceptionalPrice"
+                      checked={newOrder.isExceptionalPrice}
+                      onChange={(e) => setNewOrder({...newOrder, isExceptionalPrice: e.target.checked})}
                     />
+                    <Label htmlFor="exceptionalPrice">Appliquer un prix exceptionnel</Label>
                   </div>
-                )}
+                  
+                  {newOrder.isExceptionalPrice && (
+                    <div>
+                      <Label htmlFor="exceptionalAmount">Montant exceptionnel</Label>
+                      <Input
+                        id="exceptionalAmount"
+                        type="number"
+                        step="0.50"
+                        min="0"
+                        value={newOrder.exceptionalAmount}
+                        onChange={(e) => setNewOrder({...newOrder, exceptionalAmount: parseFloat(e.target.value) || 0})}
+                      />
+                    </div>
+                  )}
+                </div>
               </div>
 
               <Separator />
@@ -277,6 +545,17 @@ export const OrderManagement = () => {
               {/* Récapitulatif */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <h4 className="font-medium">Récapitulatif de la commande</h4>
+                <div className="flex justify-between text-sm">
+                  <span>Client:</span>
+                  <span>
+                    {clientMode === 'search' && selectedClient 
+                      ? (selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`)
+                      : clientMode === 'create' 
+                      ? (newClient.companyName || `${newClient.firstName} ${newClient.lastName}`)
+                      : 'Non sélectionné'
+                    }
+                  </span>
+                </div>
                 <div className="flex justify-between text-sm">
                   <span>Service:</span>
                   <span>{getServiceLabel(newOrder.service)}</span>
@@ -304,10 +583,16 @@ export const OrderManagement = () => {
               </div>
               
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setIsCreatingOrder(false)}>
+                <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
                   Annuler
                 </Button>
-                <Button onClick={handleCreateOrder}>
+                <Button 
+                  onClick={handleCreateOrder}
+                  disabled={
+                    (clientMode === 'search' && !selectedClient) ||
+                    (clientMode === 'create' && (!newClient.firstName || !newClient.lastName))
+                  }
+                >
                   Créer la commande
                 </Button>
               </div>
