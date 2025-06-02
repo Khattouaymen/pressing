@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -7,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Search, Users, Building2, Phone, Mail, MapPin, Calendar } from "lucide-react";
+import { Plus, Search, Users, Building2, Phone, Mail, MapPin, Calendar, UserCheck } from "lucide-react";
 
 interface Client {
   id: string;
@@ -27,6 +26,9 @@ interface Client {
 export const ClientManagement = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingClient, setIsAddingClient] = useState(false);
+  const [clientFormMode, setClientFormMode] = useState<'search' | 'create'>('search');
+  const [clientSearchTerm, setClientSearchTerm] = useState("");
+  const [selectedExistingClient, setSelectedExistingClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({
     firstName: '',
     lastName: '',
@@ -87,12 +89,32 @@ export const ClientManagement = () => {
     (client.companyName && client.companyName.toLowerCase().includes(searchTerm.toLowerCase()))
   );
 
+  const searchResults = clients.filter(client =>
+    clientSearchTerm && (
+      `${client.firstName} ${client.lastName}`.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+      client.email.toLowerCase().includes(clientSearchTerm.toLowerCase()) ||
+      client.phone.includes(clientSearchTerm) ||
+      (client.companyName && client.companyName.toLowerCase().includes(clientSearchTerm.toLowerCase()))
+    )
+  );
+
   const individualClients = filteredClients.filter(c => c.type === 'individual');
   const professionalClients = filteredClients.filter(c => c.type === 'professional');
 
   const handleAddClient = () => {
-    console.log('Adding client:', newClient);
+    if (clientFormMode === 'search' && selectedExistingClient) {
+      console.log('Client existant sélectionné:', selectedExistingClient);
+    } else {
+      console.log('Nouveau client créé:', newClient);
+    }
     setIsAddingClient(false);
+    resetForm();
+  };
+
+  const resetForm = () => {
+    setClientFormMode('search');
+    setClientSearchTerm("");
+    setSelectedExistingClient(null);
     setNewClient({
       firstName: '',
       lastName: '',
@@ -103,6 +125,13 @@ export const ClientManagement = () => {
       companyName: '',
       siret: ''
     });
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsAddingClient(open);
+    if (!open) {
+      resetForm();
+    }
   };
 
   const ClientCard = ({ client }: { client: Client }) => (
@@ -163,121 +192,207 @@ export const ClientManagement = () => {
           <p className="text-gray-600">Gérez vos clients particuliers et professionnels</p>
         </div>
         
-        <Dialog open={isAddingClient} onOpenChange={setIsAddingClient}>
+        <Dialog open={isAddingClient} onOpenChange={handleDialogOpenChange}>
           <DialogTrigger asChild>
             <Button>
               <Plus className="w-4 h-4 mr-2" />
-              Nouveau Client
+              Nouveau Client / Rechercher
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[600px]">
             <DialogHeader>
-              <DialogTitle>Ajouter un nouveau client</DialogTitle>
+              <DialogTitle>Rechercher ou Créer un Client</DialogTitle>
               <DialogDescription>
-                Créez un nouveau profil client particulier ou professionnel
+                Recherchez un client existant ou créez un nouveau profil client
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-4">
-              <Tabs value={newClient.type} onValueChange={(value: any) => setNewClient({...newClient, type: value})}>
+              <Tabs value={clientFormMode} onValueChange={(value: any) => setClientFormMode(value)}>
                 <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="individual">Particulier</TabsTrigger>
-                  <TabsTrigger value="professional">Professionnel</TabsTrigger>
+                  <TabsTrigger value="search" className="flex items-center gap-2">
+                    <Search className="w-4 h-4" />
+                    Rechercher Client
+                  </TabsTrigger>
+                  <TabsTrigger value="create" className="flex items-center gap-2">
+                    <Plus className="w-4 h-4" />
+                    Créer Nouveau
+                  </TabsTrigger>
                 </TabsList>
                 
-                <TabsContent value="individual" className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Prénom</Label>
+                <TabsContent value="search" className="space-y-4">
+                  <div>
+                    <Label htmlFor="clientSearch">Rechercher un client existant</Label>
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
                       <Input
-                        id="firstName"
-                        value={newClient.firstName}
-                        onChange={(e) => setNewClient({...newClient, firstName: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Nom</Label>
-                      <Input
-                        id="lastName"
-                        value={newClient.lastName}
-                        onChange={(e) => setNewClient({...newClient, lastName: e.target.value})}
+                        id="clientSearch"
+                        placeholder="Nom, téléphone, email ou entreprise..."
+                        value={clientSearchTerm}
+                        onChange={(e) => setClientSearchTerm(e.target.value)}
+                        className="pl-10"
                       />
                     </div>
                   </div>
+                  
+                  {clientSearchTerm && (
+                    <div className="max-h-60 overflow-y-auto border rounded-lg">
+                      {searchResults.length > 0 ? (
+                        <div className="space-y-2 p-2">
+                          {searchResults.map((client) => (
+                            <div
+                              key={client.id}
+                              className={`p-3 border rounded cursor-pointer transition-colors ${
+                                selectedExistingClient?.id === client.id
+                                  ? 'bg-blue-50 border-blue-200'
+                                  : 'hover:bg-gray-50'
+                              }`}
+                              onClick={() => setSelectedExistingClient(client)}
+                            >
+                              <div className="flex items-center justify-between">
+                                <div>
+                                  <p className="font-medium">
+                                    {client.firstName} {client.lastName}
+                                  </p>
+                                  {client.companyName && (
+                                    <p className="text-sm text-blue-600">{client.companyName}</p>
+                                  )}
+                                  <p className="text-sm text-gray-600">{client.phone}</p>
+                                  <p className="text-sm text-gray-600">{client.email}</p>
+                                </div>
+                                <Badge variant={client.type === 'professional' ? 'default' : 'secondary'}>
+                                  {client.type === 'professional' ? 'Pro' : 'Particulier'}
+                                </Badge>
+                              </div>
+                              {selectedExistingClient?.id === client.id && (
+                                <div className="mt-2 flex items-center text-sm text-blue-600">
+                                  <UserCheck className="w-4 h-4 mr-1" />
+                                  Client sélectionné
+                                </div>
+                              )}
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="p-4 text-center text-gray-500">
+                          Aucun client trouvé. Créez un nouveau client dans l'onglet "Créer Nouveau".
+                        </div>
+                      )}
+                    </div>
+                  )}
+                  
+                  {!clientSearchTerm && (
+                    <div className="text-center text-gray-500 py-8">
+                      Commencez à taper pour rechercher un client existant
+                    </div>
+                  )}
                 </TabsContent>
                 
-                <TabsContent value="professional" className="space-y-4">
+                <TabsContent value="create" className="space-y-4">
+                  <Tabs value={newClient.type} onValueChange={(value: any) => setNewClient({...newClient, type: value})}>
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="individual">Particulier</TabsTrigger>
+                      <TabsTrigger value="professional">Professionnel</TabsTrigger>
+                    </TabsList>
+                    
+                    <TabsContent value="individual" className="space-y-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="firstName">Prénom</Label>
+                          <Input
+                            id="firstName"
+                            value={newClient.firstName}
+                            onChange={(e) => setNewClient({...newClient, firstName: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="lastName">Nom</Label>
+                          <Input
+                            id="lastName"
+                            value={newClient.lastName}
+                            onChange={(e) => setNewClient({...newClient, lastName: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                    </TabsContent>
+                    
+                    <TabsContent value="professional" className="space-y-4">
+                      <div>
+                        <Label htmlFor="companyName">Raison sociale</Label>
+                        <Input
+                          id="companyName"
+                          value={newClient.companyName}
+                          onChange={(e) => setNewClient({...newClient, companyName: e.target.value})}
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <Label htmlFor="firstName">Prénom contact</Label>
+                          <Input
+                            id="firstName"
+                            value={newClient.firstName}
+                            onChange={(e) => setNewClient({...newClient, firstName: e.target.value})}
+                          />
+                        </div>
+                        <div>
+                          <Label htmlFor="lastName">Nom contact</Label>
+                          <Input
+                            id="lastName"
+                            value={newClient.lastName}
+                            onChange={(e) => setNewClient({...newClient, lastName: e.target.value})}
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <Label htmlFor="siret">SIRET</Label>
+                        <Input
+                          id="siret"
+                          value={newClient.siret}
+                          onChange={(e) => setNewClient({...newClient, siret: e.target.value})}
+                        />
+                      </div>
+                    </TabsContent>
+                  </Tabs>
+                  
                   <div>
-                    <Label htmlFor="companyName">Raison sociale</Label>
+                    <Label htmlFor="phone">Téléphone</Label>
                     <Input
-                      id="companyName"
-                      value={newClient.companyName}
-                      onChange={(e) => setNewClient({...newClient, companyName: e.target.value})}
+                      id="phone"
+                      value={newClient.phone}
+                      onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="firstName">Prénom contact</Label>
-                      <Input
-                        id="firstName"
-                        value={newClient.firstName}
-                        onChange={(e) => setNewClient({...newClient, firstName: e.target.value})}
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="lastName">Nom contact</Label>
-                      <Input
-                        id="lastName"
-                        value={newClient.lastName}
-                        onChange={(e) => setNewClient({...newClient, lastName: e.target.value})}
-                      />
-                    </div>
-                  </div>
+                  
                   <div>
-                    <Label htmlFor="siret">SIRET</Label>
+                    <Label htmlFor="email">Email</Label>
                     <Input
-                      id="siret"
-                      value={newClient.siret}
-                      onChange={(e) => setNewClient({...newClient, siret: e.target.value})}
+                      id="email"
+                      type="email"
+                      value={newClient.email}
+                      onChange={(e) => setNewClient({...newClient, email: e.target.value})}
+                    />
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="address">Adresse</Label>
+                    <Input
+                      id="address"
+                      value={newClient.address}
+                      onChange={(e) => setNewClient({...newClient, address: e.target.value})}
                     />
                   </div>
                 </TabsContent>
               </Tabs>
               
-              <div>
-                <Label htmlFor="phone">Téléphone</Label>
-                <Input
-                  id="phone"
-                  value={newClient.phone}
-                  onChange={(e) => setNewClient({...newClient, phone: e.target.value})}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={newClient.email}
-                  onChange={(e) => setNewClient({...newClient, email: e.target.value})}
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="address">Adresse</Label>
-                <Input
-                  id="address"
-                  value={newClient.address}
-                  onChange={(e) => setNewClient({...newClient, address: e.target.value})}
-                />
-              </div>
-              
               <div className="flex justify-end space-x-2 pt-4">
-                <Button variant="outline" onClick={() => setIsAddingClient(false)}>
+                <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
                   Annuler
                 </Button>
-                <Button onClick={handleAddClient}>
-                  Créer le client
+                <Button 
+                  onClick={handleAddClient}
+                  disabled={clientFormMode === 'search' ? !selectedExistingClient : false}
+                >
+                  {clientFormMode === 'search' ? 'Sélectionner Client' : 'Créer Client'}
                 </Button>
               </div>
             </div>
