@@ -14,11 +14,13 @@ import {
   Package,
   CheckCircle,
   AlertCircle,
-  Plus
+  Plus,
+  Shirt
 } from "lucide-react";
 import { ClientManagement } from "@/components/ClientManagement";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProfessionalDashboard } from "@/components/ProfessionalDashboard";
+import { PieceManagement } from "@/components/PieceManagement";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
@@ -72,7 +74,7 @@ const Index = () => {
       {/* Main Content */}
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full grid-cols-4 lg:w-auto lg:grid-cols-4">
+          <TabsList className="grid w-full grid-cols-5 lg:w-auto lg:grid-cols-5">
             <TabsTrigger value="dashboard" className="flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Dashboard
@@ -84,6 +86,10 @@ const Index = () => {
             <TabsTrigger value="orders" className="flex items-center gap-2">
               <ClipboardList className="w-4 h-4" />
               Commandes
+            </TabsTrigger>
+            <TabsTrigger value="pieces" className="flex items-center gap-2">
+              <Shirt className="w-4 h-4" />
+              Pièces
             </TabsTrigger>
             <TabsTrigger value="professional" className="flex items-center gap-2">
               <Building2 className="w-4 h-4" />
@@ -177,6 +183,10 @@ const Index = () => {
 
           <TabsContent value="orders">
             <OrderManagement />
+          </TabsContent>
+
+          <TabsContent value="pieces">
+            <PieceManagement />
           </TabsContent>
 
           <TabsContent value="professional">
