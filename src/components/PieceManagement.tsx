@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,95 +8,34 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Plus, Search, Edit3, Trash2, Shirt, Euro } from "lucide-react";
-
-interface PieceType {
-  id: string;
-  name: string;
-  category: 'vetement' | 'linge' | 'accessoire';
-  pressingPrice: number;
-  cleaningPressingPrice: number;
-  description?: string;
-}
+import { usePieces, Piece } from '@/hooks/useApiDatabase';
 
 export const PieceManagement = () => {
+  // Hooks de base de données
+  const { pieces, loading, addPiece, updatePiece, deletePiece } = usePieces();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingPiece, setIsAddingPiece] = useState(false);
-  const [editingPiece, setEditingPiece] = useState<PieceType | null>(null);
+  const [editingPiece, setEditingPiece] = useState<Piece | null>(null);
   const [newPiece, setNewPiece] = useState({
     name: '',
     category: 'vetement' as 'vetement' | 'linge' | 'accessoire',
     pressingPrice: 0,
     cleaningPressingPrice: 0,
-    description: ''
+    description: '',
+    imageUrl: ''
   });
 
-  // Mock data avec des prix réalistes
-  const [pieces, setPieces] = useState<PieceType[]>([
-    {
-      id: "P001",
-      name: "Chemise",
-      category: "vetement",
-      pressingPrice: 3.50,
-      cleaningPressingPrice: 8.00,
-      description: "Chemise homme/femme"
-    },
-    {
-      id: "P002",
-      name: "Pantalon",
-      category: "vetement",
-      pressingPrice: 4.00,
-      cleaningPressingPrice: 9.50,
-      description: "Pantalon classique"
-    },
-    {
-      id: "P003",
-      name: "Veste",
-      category: "vetement",
-      pressingPrice: 6.50,
-      cleaningPressingPrice: 15.00,
-      description: "Veste de costume"
-    },
-    {
-      id: "P004",
-      name: "Robe",
-      category: "vetement",
-      pressingPrice: 5.00,
-      cleaningPressingPrice: 12.00,
-      description: "Robe femme"
-    },
-    {
-      id: "P005",
-      name: "Manteau",
-      category: "vetement",
-      pressingPrice: 8.00,
-      cleaningPressingPrice: 20.00,
-      description: "Manteau long"
-    },
-    {
-      id: "P006",
-      name: "Drap",
-      category: "linge",
-      pressingPrice: 4.50,
-      cleaningPressingPrice: 10.00,
-      description: "Drap de lit"
-    },
-    {
-      id: "P007",
-      name: "Nappe",
-      category: "linge",
-      pressingPrice: 3.00,
-      cleaningPressingPrice: 7.50,
-      description: "Nappe de table"
-    },
-    {
-      id: "P008",
-      name: "Cravate",
-      category: "accessoire",
-      pressingPrice: 2.50,
-      cleaningPressingPrice: 6.00,
-      description: "Cravate classique"
-    }
-  ]);
+  // Affichage conditionnel pendant le chargement
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p>Chargement des pièces...</p>
+        </div>
+      </div>
+    );
+  }
 
   const getCategoryLabel = (category: string) => {
     switch (category) {
@@ -120,60 +59,100 @@ export const PieceManagement = () => {
     piece.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     piece.description?.toLowerCase().includes(searchTerm.toLowerCase())
   );
+  const handleAddPiece = async () => {
+    // Validation des champs requis
+    if (!newPiece.name.trim()) {
+      toast.error('Veuillez saisir le nom de la pièce');
+      return;
+    }
 
-  const handleAddPiece = () => {
-    const newId = `P${String(pieces.length + 1).padStart(3, '0')}`;
-    const pieceToAdd: PieceType = {
-      id: newId,
-      ...newPiece
-    };
-    
-    setPieces([...pieces, pieceToAdd]);
-    setNewPiece({
-      name: '',
-      category: 'vetement',
-      pressingPrice: 0,
-      cleaningPressingPrice: 0,
-      description: ''
-    });
-    setIsAddingPiece(false);
-    console.log('Ajout de la pièce:', pieceToAdd);
+    if (newPiece.pressingPrice <= 0 && newPiece.cleaningPressingPrice <= 0) {
+      toast.error('Veuillez saisir au moins un prix supérieur à 0');
+      return;
+    }
+
+    try {
+      const pieceData = {
+        id: `P${Date.now()}`,
+        ...newPiece
+      };
+      
+      await addPiece(pieceData);
+      setNewPiece({
+        name: '',
+        category: 'vetement',
+        pressingPrice: 0,
+        cleaningPressingPrice: 0,
+        description: '',
+        imageUrl: ''
+      });
+      setIsAddingPiece(false);
+      toast.success(`Pièce "${pieceData.name}" ajoutée avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout de la pièce:', error);
+      toast.error('Erreur lors de l\'ajout de la pièce');
+    }
   };
 
-  const handleEditPiece = (piece: PieceType) => {
+  const handleEditPiece = (piece: Piece) => {
     setEditingPiece(piece);
     setNewPiece({
       name: piece.name,
       category: piece.category,
       pressingPrice: piece.pressingPrice,
       cleaningPressingPrice: piece.cleaningPressingPrice,
-      description: piece.description || ''
+      description: piece.description || '',
+      imageUrl: piece.imageUrl || ''
     });
   };
-
-  const handleUpdatePiece = () => {
+  const handleUpdatePiece = async () => {
     if (editingPiece) {
-      const updatedPieces = pieces.map(piece =>
-        piece.id === editingPiece.id
-          ? { ...editingPiece, ...newPiece }
-          : piece
-      );
-      setPieces(updatedPieces);
-      setEditingPiece(null);
-      setNewPiece({
-        name: '',
-        category: 'vetement',
-        pressingPrice: 0,
-        cleaningPressingPrice: 0,
-        description: ''
-      });
-      console.log('Mise à jour de la pièce:', editingPiece);
+      // Validation des champs requis
+      if (!newPiece.name.trim()) {
+        toast.error('Veuillez saisir le nom de la pièce');
+        return;
+      }
+
+      if (newPiece.pressingPrice <= 0 && newPiece.cleaningPressingPrice <= 0) {
+        toast.error('Veuillez saisir au moins un prix supérieur à 0');
+        return;
+      }
+
+      try {
+        const updatedPiece = { ...editingPiece, ...newPiece };
+        await updatePiece(updatedPiece);
+        setEditingPiece(null);
+        setNewPiece({
+          name: '',
+          category: 'vetement',
+          pressingPrice: 0,
+          cleaningPressingPrice: 0,
+          description: '',
+          imageUrl: ''
+        });
+        toast.success(`Pièce "${updatedPiece.name}" mise à jour avec succès`);
+      } catch (error) {
+        console.error('Erreur lors de la mise à jour de la pièce:', error);
+        toast.error('Erreur lors de la mise à jour de la pièce');
+      }
     }
   };
 
-  const handleDeletePiece = (pieceId: string) => {
-    setPieces(pieces.filter(piece => piece.id !== pieceId));
-    console.log('Suppression de la pièce:', pieceId);
+  const handleDeletePiece = async (pieceId: string) => {
+    const piece = pieces.find(p => p.id === pieceId);
+    if (!piece) return;
+
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer la pièce "${piece.name}" ? Cette action est irréversible.`)) {
+      return;
+    }
+
+    try {
+      await deletePiece(pieceId);
+      toast.success(`Pièce "${piece.name}" supprimée avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la pièce:', error);
+      toast.error('Erreur lors de la suppression de la pièce');
+    }
   };
 
   const PieceDialog = ({ isEdit = false }: { isEdit?: boolean }) => (
@@ -247,6 +226,28 @@ export const PieceManagement = () => {
           />
         </div>
         
+        <div>
+          <Label htmlFor="imageUrl">URL de l'image (optionnel)</Label>
+          <Input
+            id="imageUrl"
+            value={newPiece.imageUrl}
+            onChange={(e) => setNewPiece({...newPiece, imageUrl: e.target.value})}
+            placeholder="https://example.com/image.jpg"
+          />
+          {newPiece.imageUrl && (
+            <div className="mt-2">
+              <img 
+                src={newPiece.imageUrl} 
+                alt="Aperçu" 
+                className="w-20 h-20 object-cover rounded border"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
+        </div>
+        
         <div className="flex justify-end space-x-2 pt-4">
           <Button 
             variant="outline" 
@@ -258,7 +259,8 @@ export const PieceManagement = () => {
                 category: 'vetement',
                 pressingPrice: 0,
                 cleaningPressingPrice: 0,
-                description: ''
+                description: '',
+                imageUrl: ''
               });
             }}
           >
@@ -336,6 +338,19 @@ export const PieceManagement = () => {
         {filteredPieces.map((piece) => (
           <Card key={piece.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
+              {/* Image de la pièce */}
+              {piece.imageUrl && (
+                <div className="mb-3">
+                  <img 
+                    src={piece.imageUrl} 
+                    alt={piece.name}
+                    className="w-full h-32 object-cover rounded-md border"
+                    onError={(e) => {
+                      e.currentTarget.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{piece.name}</CardTitle>
                 <Badge className={getCategoryColor(piece.category)}>

@@ -1,75 +1,23 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Search, Package, Clock, CheckCircle, Printer, QrCode, Euro, UserCheck, Minus, X } from "lucide-react";
-
-interface Piece {
-  id: string;
-  name: string;
-  category: 'vetement' | 'linge' | 'accessoire';
-  pressingPrice: number;
-  cleaningPressingPrice: number;
-}
-
-interface OrderPiece {
-  pieceId: string;
-  pieceName: string;
-  serviceType: 'pressing' | 'cleaning-pressing';
-  quantity: number;
-  unitPrice: number;
-  totalPrice: number;
-}
-
-interface Order {
-  id: string;
-  clientName: string;
-  clientId: string;
-  pieces: OrderPiece[];
-  totalAmount: number;
-  status: 'received' | 'processing' | 'ready' | 'collected';
-  createdAt: string;
-  estimatedDate: string;
-  paymentStatus: 'paid' | 'pending';
-  isExceptionalPrice: boolean;
-  originalPrice?: number;
-}
-
-interface Client {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  address: string;
-  type: 'individual' | 'professional';
-  companyName?: string;
-}
+import { useClients, usePieces, useOrders, Client, Piece, Order, OrderPiece } from '@/hooks/useApiDatabase';
 
 export const OrderManagement = () => {
-  // Available pieces with their prices
-  const availablePieces: Piece[] = [
-    { id: 'chemise', name: 'Chemise', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00 },
-    { id: 'pantalon', name: 'Pantalon', category: 'vetement', pressingPrice: 4.00, cleaningPressingPrice: 9.00 },
-    { id: 'veste', name: 'Veste', category: 'vetement', pressingPrice: 6.00, cleaningPressingPrice: 12.00 },
-    { id: 'robe', name: 'Robe', category: 'vetement', pressingPrice: 5.00, cleaningPressingPrice: 10.00 },
-    { id: 'jupe', name: 'Jupe', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00 },
-    { id: 'pull', name: 'Pull/Tricot', category: 'vetement', pressingPrice: 4.50, cleaningPressingPrice: 9.50 },
-    { id: 'costume', name: 'Costume complet', category: 'vetement', pressingPrice: 12.00, cleaningPressingPrice: 20.00 },
-    { id: 'manteau', name: 'Manteau', category: 'vetement', pressingPrice: 8.00, cleaningPressingPrice: 15.00 },
-    { id: 'drap', name: 'Drap', category: 'linge', pressingPrice: 5.00, cleaningPressingPrice: 8.00 },
-    { id: 'housse', name: 'Housse de couette', category: 'linge', pressingPrice: 6.00, cleaningPressingPrice: 10.00 },
-    { id: 'nappe', name: 'Nappe', category: 'linge', pressingPrice: 4.00, cleaningPressingPrice: 7.00 },
-    { id: 'rideau', name: 'Rideau', category: 'linge', pressingPrice: 8.00, cleaningPressingPrice: 12.00 },
-    { id: 'cravate', name: 'Cravate', category: 'accessoire', pressingPrice: 2.50, cleaningPressingPrice: 5.00 },
-    { id: 'foulard', name: 'Foulard', category: 'accessoire', pressingPrice: 3.00, cleaningPressingPrice: 6.00 }
-  ];
+  // Hooks de base de données
+  const { clients, loading: clientsLoading, addClient } = useClients();
+  const { pieces, loading: piecesLoading } = usePieces();
+  const { orders, loading: ordersLoading, addOrder, updateOrder } = useOrders();
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -93,73 +41,6 @@ export const OrderManagement = () => {
   const [pieceQuantity, setPieceQuantity] = useState(1);
   const [isExceptionalPrice, setIsExceptionalPrice] = useState(false);
   const [exceptionalTotal, setExceptionalTotal] = useState(0);
-
-  // Mock clients data
-  const [clients] = useState<Client[]>([
-    {
-      id: "CLI001",
-      firstName: "Marie",
-      lastName: "Dubois",
-      phone: "06 12 34 56 78",
-      email: "marie.dubois@email.com",
-      address: "123 Rue de la Paix, 75001 Paris",
-      type: 'individual'
-    },
-    {
-      id: "CLI002",
-      firstName: "Pierre",
-      lastName: "Martin",
-      phone: "06 98 76 54 32",
-      email: "pierre.martin@email.com",
-      address: "456 Avenue des Champs, 75008 Paris",
-      type: 'individual'
-    },
-    {
-      id: "PRO001",
-      firstName: "Jean",
-      lastName: "Directeur",
-      phone: "01 23 45 67 89",
-      email: "contact@hotelroyal.com",
-      address: "789 Boulevard Haussmann, 75009 Paris",
-      type: 'professional',
-      companyName: "Hotel Royal"
-    }
-  ]);
-
-  // Mock data
-  const [orders] = useState<Order[]>([
-    {
-      id: "PR2024-001234",
-      clientName: "Marie Dubois",
-      clientId: "CLI001",
-      pieces: [
-        { pieceId: 'chemise', pieceName: 'Chemise', serviceType: 'cleaning-pressing', quantity: 3, unitPrice: 8.00, totalPrice: 24.00 },
-        { pieceId: 'pantalon', pieceName: 'Pantalon', serviceType: 'cleaning-pressing', quantity: 2, unitPrice: 9.00, totalPrice: 18.00 }
-      ],
-      totalAmount: 42.00,
-      status: "processing",
-      createdAt: "2024-06-02T10:30:00",
-      estimatedDate: "2024-06-04T17:00:00",
-      paymentStatus: "paid",
-      isExceptionalPrice: false
-    },
-    {
-      id: "PR2024-001235",
-      clientName: "Pierre Martin",
-      clientId: "CLI002",
-      pieces: [
-        { pieceId: 'chemise', pieceName: 'Chemise', serviceType: 'pressing', quantity: 5, unitPrice: 3.50, totalPrice: 17.50 },
-        { pieceId: 'veste', pieceName: 'Veste', serviceType: 'pressing', quantity: 1, unitPrice: 6.00, totalPrice: 6.00 }
-      ],
-      totalAmount: 23.50,
-      status: "ready",
-      createdAt: "2024-06-01T14:15:00",
-      estimatedDate: "2024-06-03T17:00:00",
-      paymentStatus: "paid",
-      isExceptionalPrice: false
-    }
-  ]);
-
   // Filter clients for search
   const searchResults = clients.filter(client =>
     clientSearchTerm && (
@@ -173,7 +54,7 @@ export const OrderManagement = () => {
   const addPieceToOrder = () => {
     if (!selectedPieceId) return;
 
-    const piece = availablePieces.find(p => p.id === selectedPieceId);
+    const piece = pieces.find(p => p.id === selectedPieceId);
     if (!piece) return;
 
     const unitPrice = selectedServiceType === 'pressing' ? piece.pressingPrice : piece.cleaningPressingPrice;
@@ -192,10 +73,147 @@ export const OrderManagement = () => {
     setSelectedPieceId('');
     setPieceQuantity(1);
   };
-
   const removePieceFromOrder = (index: number) => {
     const newOrderPieces = orderPieces.filter((_, i) => i !== index);
     setOrderPieces(newOrderPieces);
+  };  // Création d'un nouveau client
+  const handleCreateClient = async () => {
+    if (!newClient.firstName || !newClient.lastName || !newClient.phone) {
+      toast.error('Veuillez remplir les champs obligatoires (nom, prénom, téléphone)');
+      return;
+    }
+
+    if (newClient.email && !newClient.email.includes('@')) {
+      toast.error('Veuillez saisir un email valide');
+      return;
+    }
+
+    if (newClient.type === 'professional' && !newClient.companyName) {
+      toast.error('Veuillez saisir le nom de l\'entreprise');
+      return;
+    }
+
+    try {
+      const clientData = {
+        id: `CLI${Date.now()}`, // Génération d'un ID simple
+        ...newClient,
+        createdAt: new Date().toISOString(),
+        ...(newClient.type === 'individual' ? { companyName: undefined } : {}),
+      };
+      
+      const createdClient = await addClient(clientData);
+      setSelectedClient(createdClient);
+      setClientMode('search');
+      setNewClient({
+        firstName: '',
+        lastName: '',
+        phone: '',
+        email: '',
+        address: '',
+        type: 'individual',
+        companyName: ''
+      });
+      toast.success(`Client ${clientData.firstName} ${clientData.lastName} créé avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de la création du client:', error);
+      toast.error('Erreur lors de la création du client');
+    }
+  };  // Création d'une nouvelle commande
+  const handleCreateOrder = async () => {
+    if (!selectedClient) {
+      toast.error('Veuillez sélectionner un client');
+      return;
+    }
+
+    if (orderPieces.length === 0) {
+      toast.error('Veuillez ajouter au moins une pièce à la commande');
+      return;
+    }
+
+    if (isExceptionalPrice && exceptionalTotal <= 0) {
+      toast.error('Le montant exceptionnel doit être supérieur à 0');
+      return;
+    }
+
+    try {
+      const totalAmount = isExceptionalPrice 
+        ? exceptionalTotal 
+        : orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0);
+
+      const orderData: Order = {
+        id: `PR${Date.now()}`, // Génération d'un ID simple
+        clientId: selectedClient.id,
+        clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
+        pieces: orderPieces,
+        totalAmount,
+        status: 'received',
+        paymentStatus: 'pending',
+        createdAt: new Date().toISOString(),
+        estimatedDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 48h plus tard
+        isExceptionalPrice,
+        ...(isExceptionalPrice ? { originalPrice: orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0) } : {}),
+      };
+
+      await addOrder(orderData);
+      
+      // Reset du formulaire
+      setIsCreatingOrder(false);
+      setSelectedClient(null);
+      setOrderPieces([]);
+      setClientSearchTerm('');
+      setIsExceptionalPrice(false);
+      setExceptionalTotal(0);
+      setClientMode('search');
+      
+      toast.success(`Commande ${orderData.id} créée avec succès pour ${selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`}`);
+    } catch (error) {
+      console.error('Erreur lors de la création de la commande:', error);
+      toast.error('Erreur lors de la création de la commande');
+    }
+  };
+  // Mise à jour du statut d'une commande
+  const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
+    try {
+      await updateOrder(orderId, { status: newStatus });
+      toast.success(`Statut de la commande ${orderId} mis à jour`);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour de la commande:', error);
+      toast.error('Erreur lors de la mise à jour du statut');
+    }
+  };
+
+  // Mise à jour du statut de paiement
+  const handleUpdatePaymentStatus = async (orderId: string, newPaymentStatus: Order['paymentStatus']) => {
+    try {
+      await updateOrder(orderId, { paymentStatus: newPaymentStatus });
+      toast.success(`Statut de paiement mis à jour`);
+    } catch (error) {
+      console.error('Erreur lors de la mise à jour du paiement:', error);
+      toast.error('Erreur lors de la mise à jour du paiement');
+    }
+  };
+
+  // Gestion de l'ouverture/fermeture du dialog
+  const handleDialogOpenChange = (open: boolean) => {
+    setIsCreatingOrder(open);
+    if (!open) {
+      // Reset quand on ferme le dialog
+      setSelectedClient(null);
+      setOrderPieces([]);
+      setClientSearchTerm('');
+      setIsExceptionalPrice(false);
+      setExceptionalTotal(0);
+      setClientMode('search');
+      setNewClient({
+        firstName: '',
+        lastName: '',
+        phone: '',
+        email: '',
+        address: '',
+        type: 'individual',
+        companyName: ''
+      });
+    }
   };
 
   const updatePieceQuantity = (index: number, newQuantity: number) => {
@@ -213,28 +231,24 @@ export const OrderManagement = () => {
     }
     return orderPieces.reduce((total, piece) => total + piece.totalPrice, 0);
   };
-
   const getStatusColor = (status: string) => {
     switch (status) {
       case "received": return "bg-blue-100 text-blue-800 border-blue-200";
       case "processing": return "bg-yellow-100 text-yellow-800 border-yellow-200";
       case "ready": return "bg-green-100 text-green-800 border-green-200";
-      case "collected": return "bg-gray-100 text-gray-800 border-gray-200";
+      case "delivered": return "bg-gray-100 text-gray-800 border-gray-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
   };
-
   const getStatusLabel = (status: string) => {
     switch (status) {
       case "received": return "Reçu";
       case "processing": return "En traitement";
       case "ready": return "Prêt";
-      case "collected": return "Récupéré";
+      case "delivered": return "Récupéré";
       default: return status;
     }
-  };
-
-  const getServiceLabel = (service: string) => {
+  };const getServiceLabel = (service: string) => {
     switch (service) {
       case "pressing": return "Repassage";
       case "cleaning-pressing": return "Nettoyage + Repassage";
@@ -242,46 +256,24 @@ export const OrderManagement = () => {
     }
   };
 
-  const generateTrackingCode = () => {
-    const timestamp = Date.now().toString().slice(-6);
-    const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-    return `PR2024-${timestamp}${random}`;
+  const getStatusIcon = (status: string) => {
+    switch (status) {
+      case "received": return Package;
+      case "processing": return Clock;
+      case "ready": return CheckCircle;
+      case "delivered": return CheckCircle;
+      default: return Package;
+    }
   };
 
-  const handleCreateOrder = () => {
-    if (orderPieces.length === 0) return;
+  const handlePrintReceipt = (order: Order) => {
+    console.log('Impression du reçu pour la commande:', order.id);
+    // Ici on pourrait intégrer une solution d'impression
+  };
 
-    let clientInfo;
-    
-    if (clientMode === 'search' && selectedClient) {
-      clientInfo = {
-        clientId: selectedClient.id,
-        clientName: selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`
-      };
-    } else {
-      // Créer nouveau client
-      const newClientId = `CLI${String(clients.length + 1).padStart(3, '0')}`;
-      clientInfo = {
-        clientId: newClientId,
-        clientName: newClient.companyName || `${newClient.firstName} ${newClient.lastName}`
-      };
-      console.log('Nouveau client créé:', { ...newClient, id: newClientId });
-    }
-
-    const trackingCode = generateTrackingCode();
-    console.log('Creating order:', {
-      ...clientInfo,
-      id: trackingCode,
-      pieces: orderPieces,
-      totalAmount: calculateOrderTotal(),
-      createdAt: new Date().toISOString(),
-      status: 'received',
-      paymentStatus: 'paid',
-      isExceptionalPrice
-    });
-    
-    resetForm();
-    setIsCreatingOrder(false);
+  const handlePrintLabels = (order: Order) => {
+    console.log('Impression des étiquettes pour la commande:', order.id);
+    // Ici on pourrait intégrer une solution d'impression d'étiquettes
   };
 
   const resetForm = () => {
@@ -305,20 +297,16 @@ export const OrderManagement = () => {
     setExceptionalTotal(0);
   };
 
-  const handleDialogOpenChange = (open: boolean) => {
-    setIsCreatingOrder(open);
-    if (!open) {
-      resetForm();
-    }
-  };
-
-  const handlePrintReceipt = (order: Order) => {
-    console.log('Printing receipt for order:', order.id);
-  };
-
-  const handlePrintLabels = (order: Order) => {
-    console.log('Printing labels for order:', order.id);
-  };
+  // Affichage conditionnel pendant le chargement
+  if (clientsLoading || piecesLoading || ordersLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p>Chargement des données...</p>
+        </div>
+      </div>
+    );
+  }
 
   const filteredOrders = orders.filter(order => {
     const matchesSearch = order.id.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -511,8 +499,7 @@ export const OrderManagement = () => {
                         />
                       </div>
                     </div>
-                    
-                    <div>
+                      <div>
                       <Label htmlFor="address">Adresse</Label>
                       <Input
                         id="address"
@@ -520,89 +507,151 @@ export const OrderManagement = () => {
                         onChange={(e) => setNewClient({...newClient, address: e.target.value})}
                       />
                     </div>
+                    
+                    <Button 
+                      onClick={handleCreateClient}
+                      disabled={!newClient.firstName || !newClient.lastName || !newClient.phone}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Créer ce client
+                    </Button>
                   </TabsContent>
                 </Tabs>
               </div>
 
               <Separator />
 
-              {/* Sélection des pièces */}
+              {/* Sélection des pièces avec images */}
               <div className="space-y-4">
                 <Label className="text-base font-medium">Sélection des pièces</Label>
                 
-                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                  <div>
-                    <Label htmlFor="piece">Type de pièce</Label>
-                    <Select value={selectedPieceId} onValueChange={setSelectedPieceId}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Choisir une pièce" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {availablePieces.map((piece) => (
-                          <SelectItem key={piece.id} value={piece.id}>
-                            {piece.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                <div className="space-y-4">
+                  {/* Grille de sélection visuelle des pièces */}
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-60 overflow-y-auto border rounded-lg p-3">
+                    {pieces.map((piece) => (
+                      <div
+                        key={piece.id}
+                        className={`cursor-pointer border rounded-lg p-3 transition-all hover:shadow-md ${
+                          selectedPieceId === piece.id 
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
+                            : 'border-gray-200 hover:border-gray-300'
+                        }`}
+                        onClick={() => setSelectedPieceId(piece.id)}
+                      >
+                        {piece.imageUrl && (
+                          <img 
+                            src={piece.imageUrl} 
+                            alt={piece.name}
+                            className="w-full h-16 object-cover rounded-md mb-2"
+                            onError={(e) => {
+                              e.currentTarget.style.display = 'none';
+                            }}
+                          />
+                        )}
+                        <div className="text-center">
+                          <div className="font-medium text-sm mb-1">{piece.name}</div>
+                          <div className="text-xs text-gray-600">
+                            Repassage: €{piece.pressingPrice}
+                          </div>
+                          <div className="text-xs text-gray-600">
+                            Nettoyage: €{piece.cleaningPressingPrice}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                   
-                  <div>
-                    <Label htmlFor="serviceType">Service</Label>
-                    <Select value={selectedServiceType} onValueChange={(value: any) => setSelectedServiceType(value)}>
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pressing">Repassage</SelectItem>
-                        <SelectItem value="cleaning-pressing">Nettoyage + Repassage</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  
-                  <div>
-                    <Label htmlFor="quantity">Quantité</Label>
-                    <Input
-                      id="quantity"
-                      type="number"
-                      min="1"
-                      value={pieceQuantity}
-                      onChange={(e) => setPieceQuantity(parseInt(e.target.value) || 1)}
-                    />
-                  </div>
-                  
-                  <div className="flex items-end">
-                    <Button 
-                      onClick={addPieceToOrder}
-                      disabled={!selectedPieceId}
-                      className="w-full"
-                    >
-                      <Plus className="w-4 h-4 mr-2" />
-                      Ajouter
-                    </Button>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <Label htmlFor="serviceType">Service</Label>
+                      <Select value={selectedServiceType} onValueChange={(value: any) => setSelectedServiceType(value)}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="pressing">Repassage</SelectItem>
+                          <SelectItem value="cleaning-pressing">Nettoyage + Repassage</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="quantity">Quantité</Label>
+                      <Input
+                        id="quantity"
+                        type="number"
+                        min="1"
+                        value={pieceQuantity}
+                        onChange={(e) => setPieceQuantity(parseInt(e.target.value) || 1)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-end">
+                      <Button 
+                        onClick={addPieceToOrder}
+                        disabled={!selectedPieceId}
+                        className="w-full"
+                      >
+                        <Plus className="w-4 h-4 mr-2" />
+                        Ajouter
+                      </Button>
+                    </div>
                   </div>
                 </div>
 
+                {/* Aperçu de la pièce sélectionnée avec image */}
                 {selectedPieceId && (
-                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
-                    Prix: €{selectedServiceType === 'pressing' 
-                      ? availablePieces.find(p => p.id === selectedPieceId)?.pressingPrice 
-                      : availablePieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice} 
-                    par pièce
+                  <div className="bg-gray-50 p-4 rounded-lg border">
+                    <div className="flex items-center gap-4">
+                      {pieces.find(p => p.id === selectedPieceId)?.imageUrl && (
+                        <img                          src={pieces.find(p => p.id === selectedPieceId)?.imageUrl}
+                          alt={pieces.find(p => p.id === selectedPieceId)?.name}
+                          className="w-16 h-16 object-cover rounded-md border"
+                          onError={(e) => {
+                            e.currentTarget.style.display = 'none';
+                          }}
+                        />
+                      )}
+                      <div className="flex-1">
+                        <h4 className="font-medium text-sm mb-1">
+                          {pieces.find(p => p.id === selectedPieceId)?.name}
+                        </h4>
+                        <div className="text-sm text-gray-600">                          <div>Repassage: €{pieces.find(p => p.id === selectedPieceId)?.pressingPrice}</div>
+                          <div>Nettoyage + Repassage: €{pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice}</div>
+                        </div>
+                        <div className="text-sm font-medium text-blue-600 mt-1">
+                          Service sélectionné: €{selectedServiceType === 'pressing'                            ? pieces.find(p => p.id === selectedPieceId)?.pressingPrice
+                            : pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice}
+                          par pièce
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
 
-                {/* Liste des pièces ajoutées */}
+                {/* Liste des pièces ajoutées avec images */}
                 {orderPieces.length > 0 && (
                   <div className="space-y-3">
                     <h4 className="font-medium">Pièces sélectionnées:</h4>
                     <div className="space-y-2">
                       {orderPieces.map((piece, index) => (
                         <div key={index} className="flex items-center justify-between p-3 border rounded bg-gray-50">
-                          <div className="flex-1">
-                            <div className="font-medium">{piece.pieceName}</div>
-                            <div className="text-sm text-gray-600">
-                              {getServiceLabel(piece.serviceType)} - €{piece.unitPrice} x {piece.quantity}
+                          <div className="flex items-center gap-3 flex-1">                            {pieces.find(p => p.id === piece.pieceId)?.imageUrl && (
+                              <img
+                                src={pieces.find(p => p.id === piece.pieceId)?.imageUrl}
+                                alt={piece.pieceName}
+                                className="w-12 h-12 object-cover rounded-md border"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                            )}
+                            <div className="flex-1">
+                              <div className="font-medium">{piece.pieceName}</div>
+                              <div className="text-sm text-gray-600">
+                                {getServiceLabel(piece.serviceType)} - €{piece.unitPrice} x {piece.quantity}
+                              </div>
                             </div>
                           </div>
                           <div className="flex items-center gap-2">
@@ -639,16 +688,13 @@ export const OrderManagement = () => {
                       ))}
                     </div>
                   </div>
-                )}
-
-                {/* Prix exceptionnel */}
+                )}                {/* Prix exceptionnel */}
                 <div className="space-y-3">
                   <div className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
+                    <Checkbox
                       id="exceptionalPrice"
                       checked={isExceptionalPrice}
-                      onChange={(e) => setIsExceptionalPrice(e.target.checked)}
+                      onCheckedChange={(checked) => setIsExceptionalPrice(!!checked)}
                     />
                     <Label htmlFor="exceptionalPrice">Appliquer un prix exceptionnel</Label>
                   </div>
@@ -741,7 +787,7 @@ export const OrderManagement = () => {
             <SelectItem value="received">Reçu</SelectItem>
             <SelectItem value="processing">En traitement</SelectItem>
             <SelectItem value="ready">Prêt</SelectItem>
-            <SelectItem value="collected">Récupéré</SelectItem>
+            <SelectItem value="delivered">Récupéré</SelectItem>
           </SelectContent>
         </Select>
       </div>
@@ -752,7 +798,7 @@ export const OrderManagement = () => {
           { label: "Reçues", count: orders.filter(o => o.status === 'received').length, color: "text-blue-600" },
           { label: "En traitement", count: orders.filter(o => o.status === 'processing').length, color: "text-yellow-600" },
           { label: "Prêtes", count: orders.filter(o => o.status === 'ready').length, color: "text-green-600" },
-          { label: "Récupérées", count: orders.filter(o => o.status === 'collected').length, color: "text-gray-600" }
+          { label: "Récupérées", count: orders.filter(o => o.status === 'delivered').length, color: "text-gray-600" }
         ].map((stat) => (
           <Card key={stat.label}>
             <CardContent className="p-4">
@@ -846,15 +892,14 @@ export const OrderManagement = () => {
                   >
                     <QrCode className="w-4 h-4 mr-2" />
                     Étiquettes
-                  </Button>
-                  <Select>
+                  </Button>                  <Select onValueChange={(value) => handleUpdateOrderStatus(order.id, value as Order['status'])}>
                     <SelectTrigger className="w-32">
                       <SelectValue placeholder="Actions" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="processing">Mettre en traitement</SelectItem>
                       <SelectItem value="ready">Marquer prêt</SelectItem>
-                      <SelectItem value="collected">Marquer récupéré</SelectItem>
+                      <SelectItem value="delivered">Marquer récupéré</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>

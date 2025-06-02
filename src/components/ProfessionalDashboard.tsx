@@ -1,5 +1,6 @@
 
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,44 +18,17 @@ import {
   Calendar,
   Euro,
   Clock,
-  AlertTriangle,
-  CheckCircle,
+  AlertTriangle,  CheckCircle,
   TrendingUp,
   Users
 } from "lucide-react";
-
-interface ProfessionalClient {
-  id: string;
-  companyName: string;
-  siret: string;
-  contactName: string;
-  email: string;
-  phone: string;
-  billingAddress: string;
-  paymentTerms: number; // jours
-  specialRate: number; // remise en %
-  totalOrders: number;
-  totalSpent: number;
-  outstandingAmount: number;
-  createdAt: string;
-}
-
-interface ProfessionalOrder {
-  id: string;
-  clientId: string;
-  clientName: string;
-  pieces: number;
-  service: string;
-  totalAmount: number;
-  status: 'received' | 'processing' | 'ready' | 'delivered';
-  paymentStatus: 'paid' | 'pending' | 'overdue';
-  createdAt: string;
-  deliveryDate: string;
-  dueDate: string;
-  priority: 'normal' | 'high';
-}
+import { useProfessionalClients, useProfessionalOrders, ProfessionalClient, ProfessionalOrder } from '@/hooks/useApiDatabase';
 
 export const ProfessionalDashboard = () => {
+  // Hooks de base de données
+  const { clients: professionalClients, loading: clientsLoading, addClient: addProfessionalClient } = useProfessionalClients();
+  const { orders: professionalOrders, loading: ordersLoading, addOrder: addProfessionalOrder } = useProfessionalOrders();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
@@ -77,70 +51,16 @@ export const ProfessionalDashboard = () => {
     priority: 'normal' as 'normal' | 'high'
   });
 
-  // Mock data
-  const [professionalClients] = useState<ProfessionalClient[]>([
-    {
-      id: "PRO001",
-      companyName: "Hotel Royal",
-      siret: "12345678901234",
-      contactName: "Jean Directeur",
-      email: "contact@hotelroyal.com",
-      phone: "01 23 45 67 89",
-      billingAddress: "789 Boulevard Haussmann, 75009 Paris",
-      paymentTerms: 30,
-      specialRate: 15,
-      totalOrders: 156,
-      totalSpent: 12456.00,
-      outstandingAmount: 1234.50,
-      createdAt: "2024-01-10"
-    },
-    {
-      id: "PRO002", 
-      companyName: "Restaurant Le Gourmet",
-      siret: "98765432109876",
-      contactName: "Marie Chef",
-      email: "contact@legourmet.fr",
-      phone: "01 98 76 54 32",
-      billingAddress: "456 Rue de la Gastronomie, 75007 Paris",
-      paymentTerms: 15,
-      specialRate: 10,
-      totalOrders: 89,
-      totalSpent: 5632.00,
-      outstandingAmount: 0,
-      createdAt: "2024-02-15"
-    }
-  ]);
-
-  const [professionalOrders] = useState<ProfessionalOrder[]>([
-    {
-      id: "PRO2024-001236",
-      clientId: "PRO001",
-      clientName: "Hotel Royal",
-      pieces: 24,
-      service: "cleaning-pressing",
-      totalAmount: 180.00,
-      status: "processing",
-      paymentStatus: "pending",
-      createdAt: "2024-06-02T09:00:00",
-      deliveryDate: "2024-06-05T10:00:00",
-      dueDate: "2024-07-02T00:00:00",
-      priority: "high"
-    },
-    {
-      id: "PRO2024-001237",
-      clientId: "PRO002",
-      clientName: "Restaurant Le Gourmet",
-      pieces: 12,
-      service: "pressing",
-      totalAmount: 35.00,
-      status: "ready",
-      paymentStatus: "paid",
-      createdAt: "2024-06-01T14:00:00",
-      deliveryDate: "2024-06-03T16:00:00",
-      dueDate: "2024-06-16T00:00:00",
-      priority: "normal"
-    }
-  ]);
+  // Affichage conditionnel pendant le chargement
+  if (clientsLoading || ordersLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p>Chargement des données professionnelles...</p>
+        </div>
+      </div>
+    );
+  }
 
   const calculateTotalOutstanding = () => {
     return professionalClients.reduce((total, client) => total + client.outstandingAmount, 0);
@@ -169,32 +89,89 @@ export const ProfessionalDashboard = () => {
       case "overdue": return "bg-red-100 text-red-800 border-red-200";
       default: return "bg-gray-100 text-gray-800 border-gray-200";
     }
-  };
+  };  const handleAddClient = async () => {
+    // Validation des champs requis
+    if (!newClient.companyName || !newClient.contactName || !newClient.email || !newClient.phone) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
 
-  const handleAddClient = () => {
-    console.log('Adding professional client:', newClient);
-    setIsAddingClient(false);
-    setNewClient({
-      companyName: '',
-      siret: '',
-      contactName: '',
-      email: '',
-      phone: '',
-      billingAddress: '',
-      paymentTerms: 30,
-      specialRate: 0
-    });
-  };
+    if (!newClient.email.includes('@')) {
+      toast.error('Veuillez saisir un email valide');
+      return;
+    }
 
-  const handleCreateOrder = () => {
-    console.log('Creating professional order:', newOrder);
-    setIsCreatingOrder(false);
-    setNewOrder({
-      clientId: '',
-      pieces: 1,
-      service: 'cleaning-pressing',
-      priority: 'normal'
-    });
+    try {
+      const clientData = {
+        id: `PRO${Date.now()}`,
+        ...newClient,
+        createdAt: new Date().toISOString()
+      };
+      
+      await addProfessionalClient(clientData);
+      setIsAddingClient(false);
+      setNewClient({
+        companyName: '',
+        siret: '',
+        contactName: '',
+        email: '',
+        phone: '',
+        billingAddress: '',
+        paymentTerms: 30,
+        specialRate: 0
+      });
+      toast.success(`Client professionnel ${clientData.companyName} créé avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de la création du client professionnel:', error);
+      toast.error('Erreur lors de la création du client professionnel');
+    }
+  };
+  const handleCreateOrder = async () => {
+    if (!newOrder.clientId) {
+      toast.error('Veuillez sélectionner un client');
+      return;
+    }
+
+    if (newOrder.pieces <= 0) {
+      toast.error('Le nombre de pièces doit être supérieur à 0');
+      return;
+    }
+    
+    try {
+      const selectedClient = professionalClients.find(c => c.id === newOrder.clientId);
+      if (!selectedClient) {
+        toast.error('Client sélectionné introuvable');
+        return;
+      }
+
+      const orderData: ProfessionalOrder = {
+        id: `PRO${Date.now()}`,
+        clientId: newOrder.clientId,
+        clientName: selectedClient.companyName,
+        pieces: newOrder.pieces,
+        service: newOrder.service,
+        totalAmount: newOrder.pieces * (newOrder.service === 'pressing' ? 5.00 : 12.00), // Prix estimé
+        status: 'received',
+        paymentStatus: 'pending',
+        createdAt: new Date().toISOString(),
+        deliveryDate: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(), // 3 jours plus tard
+        dueDate: new Date(Date.now() + selectedClient.paymentTerms * 24 * 60 * 60 * 1000).toISOString(),
+        priority: newOrder.priority
+      };
+
+      await addProfessionalOrder(orderData);
+      setIsCreatingOrder(false);
+      setNewOrder({
+        clientId: '',
+        pieces: 1,
+        service: 'cleaning-pressing',
+        priority: 'normal'
+      });
+      toast.success(`Commande ${orderData.id} créée avec succès pour ${selectedClient.companyName}`);
+    } catch (error) {
+      console.error('Erreur lors de la création de la commande professionnelle:', error);
+      toast.error('Erreur lors de la création de la commande professionnelle');
+    }
   };
 
   return (

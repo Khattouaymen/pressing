@@ -15,31 +15,21 @@ import {
   CheckCircle,
   AlertCircle,
   Plus,
-  Shirt
+  Shirt,
+  Loader2,
+  RefreshCw
 } from "lucide-react";
 import { ClientManagement } from "@/components/ClientManagement";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProfessionalDashboard } from "@/components/ProfessionalDashboard";
 import { PieceManagement } from "@/components/PieceManagement";
+import { useDashboardStats } from "@/hooks/useDashboardStats";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  // Mock data for dashboard
-  const stats = {
-    todayOrders: 24,
-    pendingOrders: 12,
-    completedToday: 8,
-    revenue: 856.50,
-    individualClients: 145,
-    professionalClients: 12
-  };
-
-  const recentOrders = [
-    { id: "PR2024-001234", client: "Marie Dubois", service: "Nettoyage + Repassage", status: "En traitement", amount: 45.50 },
-    { id: "PR2024-001235", client: "Pierre Martin", service: "Repassage", status: "Prêt", amount: 24.00 },
-    { id: "PRO2024-001236", client: "Hotel Royal", service: "Nettoyage + Repassage", status: "Reçu", amount: 234.00 }
-  ];
+  // Fetch dynamic data for dashboard
+  const { stats, recentOrders, loading } = useDashboardStats();
 
   const getStatusColor = (status: string) => {
     switch (status) {

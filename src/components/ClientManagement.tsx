@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import toast from 'react-hot-toast';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,23 +8,12 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Search, Users, Building2, Phone, Mail, MapPin, Calendar, UserCheck } from "lucide-react";
-
-interface Client {
-  id: string;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  email: string;
-  address: string;
-  createdAt: string;
-  totalOrders: number;
-  totalSpent: number;
-  type: 'individual' | 'professional';
-  companyName?: string;
-  siret?: string;
-}
+import { useClients, Client } from '@/hooks/useApiDatabase';
 
 export const ClientManagement = () => {
+  // Hooks de base de données
+  const { clients, loading, addClient } = useClients();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [clientFormMode, setClientFormMode] = useState<'search' | 'create'>('search');
@@ -39,48 +29,16 @@ export const ClientManagement = () => {
     companyName: '',
     siret: ''
   });
-
-  // Mock data
-  const [clients] = useState<Client[]>([
-    {
-      id: "CLI001",
-      firstName: "Marie",
-      lastName: "Dubois",
-      phone: "06 12 34 56 78",
-      email: "marie.dubois@email.com",
-      address: "123 Rue de la Paix, 75001 Paris",
-      createdAt: "2024-01-15",
-      totalOrders: 24,
-      totalSpent: 456.80,
-      type: 'individual'
-    },
-    {
-      id: "CLI002",
-      firstName: "Pierre",
-      lastName: "Martin",
-      phone: "06 98 76 54 32",
-      email: "pierre.martin@email.com",
-      address: "456 Avenue des Champs, 75008 Paris",
-      createdAt: "2024-02-20",
-      totalOrders: 12,
-      totalSpent: 234.50,
-      type: 'individual'
-    },
-    {
-      id: "PRO001",
-      firstName: "Jean",
-      lastName: "Directeur",
-      phone: "01 23 45 67 89",
-      email: "contact@hotelroyal.com",
-      address: "789 Boulevard Haussmann, 75009 Paris",
-      createdAt: "2024-01-10",
-      totalOrders: 156,
-      totalSpent: 12456.00,
-      type: 'professional',
-      companyName: "Hotel Royal",
-      siret: "12345678901234"
-    }
-  ]);
+  // Affichage conditionnel pendant le chargement
+  if (loading) {
+    return (
+      <div className="space-y-6">
+        <div className="text-center py-8">
+          <p>Chargement des clients...</p>
+        </div>
+      </div>
+    );
+  }
 
   const filteredClients = clients.filter(client =>
     `${client.firstName} ${client.lastName}`.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -100,15 +58,41 @@ export const ClientManagement = () => {
 
   const individualClients = filteredClients.filter(c => c.type === 'individual');
   const professionalClients = filteredClients.filter(c => c.type === 'professional');
+  const handleAddClient = async () => {
+    try {
+      if (clientFormMode === 'create') {
+        // Validation des champs requis
+        if (!newClient.firstName || !newClient.lastName || !newClient.phone) {
+          toast.error('Veuillez remplir tous les champs obligatoires (nom, prénom, téléphone)');
+          return;
+        }
 
-  const handleAddClient = () => {
-    if (clientFormMode === 'search' && selectedExistingClient) {
-      console.log('Client existant sélectionné:', selectedExistingClient);
-    } else {
-      console.log('Nouveau client créé:', newClient);
+        if (newClient.email && !newClient.email.includes('@')) {
+          toast.error('Veuillez saisir un email valide');
+          return;
+        }
+
+        if (newClient.type === 'professional' && !newClient.companyName) {
+          toast.error('Veuillez saisir le nom de l\'entreprise');
+          return;
+        }
+
+        const clientData = {
+          id: `CLI${Date.now()}`,
+          ...newClient,
+          createdAt: new Date().toISOString(),
+          ...(newClient.type === 'individual' ? { companyName: undefined, siret: undefined } : {}),
+        };
+        
+        await addClient(clientData);
+        toast.success(`Client ${clientData.firstName} ${clientData.lastName} créé avec succès`);
+      }
+      setIsAddingClient(false);
+      resetForm();
+    } catch (error) {
+      console.error('Erreur lors de l\'ajout du client:', error);
+      toast.error('Erreur lors de l\'ajout du client');
     }
-    setIsAddingClient(false);
-    resetForm();
   };
 
   const resetForm = () => {

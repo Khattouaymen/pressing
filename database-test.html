@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Integration Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 20px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .success { color: #22c55e; }
+        .error { color: #ef4444; }
+        .info { color: #3b82f6; }
+        button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover {
+            background: #2563eb;
+        }
+        #results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <h1>🧪 French Pressing App - Database Integration Test</h1>
+    
+    <div class="test-section">
+        <h2>LocalStorage Database Test</h2>
+        <p>This page tests the database functionality outside of the React app to verify localStorage persistence.</p>
+        
+        <button onclick="testClientOperations()">Test Client Operations</button>
+        <button onclick="testPieceOperations()">Test Piece Operations</button>
+        <button onclick="testProfessionalOperations()">Test Professional Operations</button>
+        <button onclick="testDataPersistence()">Test Data Persistence</button>
+        <button onclick="clearAllData()">Clear All Data</button>
+        <button onclick="runAllTests()">🚀 Run All Tests</button>
+    </div>
+
+    <div id="results"></div>
+
+    <script>
+        // Simple Database API implementation for testing
+        class TestDatabaseAPI {
+            constructor() {
+                this.storageKeys = {
+                    clients: 'clients',
+                    pieces: 'pieces',
+                    professionalClients: 'professional-clients',
+                    professionalOrders: 'professional-orders'
+                };
+            }
+
+            async getClients() {
+                const data = localStorage.getItem(this.storageKeys.clients);
+                return data ? JSON.parse(data) : [];
+            }
+
+            async addClient(client) {
+                const clients = await this.getClients();
+                const newClient = { ...client, id: Date.now().toString() };
+                clients.push(newClient);
+                localStorage.setItem(this.storageKeys.clients, JSON.stringify(clients));
+                return newClient;
+            }
+
+            async getPieces() {
+                const data = localStorage.getItem(this.storageKeys.pieces);
+                return data ? JSON.parse(data) : [];
+            }
+
+            async addPiece(piece) {
+                const pieces = await this.getPieces();
+                const newPiece = { ...piece, id: Date.now().toString() };
+                pieces.push(newPiece);
+                localStorage.setItem(this.storageKeys.pieces, JSON.stringify(pieces));
+                return newPiece;
+            }
+
+            async getProfessionalClients() {
+                const data = localStorage.getItem(this.storageKeys.professionalClients);
+                return data ? JSON.parse(data) : [];
+            }
+
+            async addProfessionalClient(client) {
+                const clients = await this.getProfessionalClients();
+                const newClient = { ...client, id: Date.now().toString() };
+                clients.push(newClient);
+                localStorage.setItem(this.storageKeys.professionalClients, JSON.stringify(clients));
+                return newClient;
+            }
+
+            async getProfessionalOrders() {
+                const data = localStorage.getItem(this.storageKeys.professionalOrders);
+                return data ? JSON.parse(data) : [];
+            }
+
+            async addProfessionalOrder(order) {
+                const orders = await this.getProfessionalOrders();
+                const newOrder = { ...order, id: Date.now().toString() };
+                orders.push(newOrder);
+                localStorage.setItem(this.storageKeys.professionalOrders, JSON.stringify(orders));
+                return newOrder;
+            }
+        }
+
+        const db = new TestDatabaseAPI();
+        const resultsEl = document.getElementById('results');
+
+        function log(message, type = 'info') {
+            const timestamp = new Date().toLocaleTimeString();
+            const prefix = type === 'success' ? '✅' : type === 'error' ? '❌' : 'ℹ️';
+            resultsEl.textContent += `[${timestamp}] ${prefix} ${message}\n`;
+            resultsEl.scrollTop = resultsEl.scrollHeight;
+        }
+
+        async function testClientOperations() {
+            log('Testing Client Operations...', 'info');
+            try {
+                // Add test client
+                const testClient = {
+                    name: 'Jean Dupont',
+                    email: 'jean.dupont@email.com',
+                    phone: '0123456789',
+                    address: '123 Rue de la Paix, Paris',
+                    customerType: 'individual'
+                };
+
+                const addedClient = await db.addClient(testClient);
+                log(`Client added: ${addedClient.name} (ID: ${addedClient.id})`, 'success');
+
+                const clients = await db.getClients();
+                log(`Total clients in database: ${clients.length}`, 'success');
+
+            } catch (error) {
+                log(`Client operations failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testPieceOperations() {
+            log('Testing Piece Operations...', 'info');
+            try {
+                const clients = await db.getClients();
+                if (clients.length === 0) {
+                    log('No clients found. Adding a test client first...', 'info');
+                    await testClientOperations();
+                }
+
+                const clientsAfter = await db.getClients();
+                const testPiece = {
+                    clientId: clientsAfter[0]?.id || 'test-client-id',
+                    type: 'Chemise',
+                    description: 'Chemise blanche en coton',
+                    status: 'pending',
+                    entryDate: new Date().toISOString(),
+                    services: ['cleaning']
+                };
+
+                const addedPiece = await db.addPiece(testPiece);
+                log(`Piece added: ${addedPiece.type} (ID: ${addedPiece.id})`, 'success');
+
+                const pieces = await db.getPieces();
+                log(`Total pieces in database: ${pieces.length}`, 'success');
+
+            } catch (error) {
+                log(`Piece operations failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testProfessionalOperations() {
+            log('Testing Professional Operations...', 'info');
+            try {
+                // Add professional client
+                const testProfClient = {
+                    companyName: 'Hôtel Le Grand Paris',
+                    contactName: 'Marie Martin',
+                    email: 'contact@grandparis.fr',
+                    phone: '0145678901',
+                    address: '456 Avenue des Champs, Paris',
+                    contractType: 'monthly'
+                };
+
+                const addedProfClient = await db.addProfessionalClient(testProfClient);
+                log(`Professional client added: ${addedProfClient.companyName} (ID: ${addedProfClient.id})`, 'success');
+
+                // Add professional order
+                const testOrder = {
+                    clientId: addedProfClient.id,
+                    orderNumber: `ORD-${Date.now()}`,
+                    pieces: [
+                        { type: 'Draps', quantity: 50, price: 5 },
+                        { type: 'Serviettes', quantity: 100, price: 2 }
+                    ],
+                    totalAmount: 450,
+                    status: 'pending',
+                    orderDate: new Date().toISOString()
+                };
+
+                const addedOrder = await db.addProfessionalOrder(testOrder);
+                log(`Professional order added: ${addedOrder.orderNumber} (€${addedOrder.totalAmount})`, 'success');
+
+                const profClients = await db.getProfessionalClients();
+                const profOrders = await db.getProfessionalOrders();
+                log(`Total professional clients: ${profClients.length}`, 'success');
+                log(`Total professional orders: ${profOrders.length}`, 'success');
+
+            } catch (error) {
+                log(`Professional operations failed: ${error.message}`, 'error');
+            }
+        }
+
+        async function testDataPersistence() {
+            log('Testing Data Persistence...', 'info');
+            try {
+                // Create new database instance to test persistence
+                const db2 = new TestDatabaseAPI();
+                
+                const clients = await db2.getClients();
+                const pieces = await db2.getPieces();
+                const profClients = await db2.getProfessionalClients();
+                const profOrders = await db2.getProfessionalOrders();
+
+                log('Data persisted across database instances:', 'success');
+                log(`  - Individual Clients: ${clients.length}`, 'info');
+                log(`  - Pieces: ${pieces.length}`, 'info');
+                log(`  - Professional Clients: ${profClients.length}`, 'info');
+                log(`  - Professional Orders: ${profOrders.length}`, 'info');
+
+                // Test data structure
+                if (clients.length > 0) {
+                    log(`Sample client: ${clients[0].name} (${clients[0].email})`, 'info');
+                }
+                if (pieces.length > 0) {
+                    log(`Sample piece: ${pieces[0].type} - ${pieces[0].status}`, 'info');
+                }
+
+            } catch (error) {
+                log(`Data persistence test failed: ${error.message}`, 'error');
+            }
+        }
+
+        function clearAllData() {
+            localStorage.removeItem('clients');
+            localStorage.removeItem('pieces');
+            localStorage.removeItem('professional-clients');
+            localStorage.removeItem('professional-orders');
+            log('All data cleared from localStorage', 'success');
+        }
+
+        async function runAllTests() {
+            log('🚀 Starting Complete Database Integration Test...', 'info');
+            log('=' * 50, 'info');
+            
+            await testClientOperations();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testPieceOperations();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testProfessionalOperations();
+            await new Promise(resolve => setTimeout(resolve, 500));
+            
+            await testDataPersistence();
+            
+            log('=' * 50, 'info');
+            log('🎉 All Database Integration Tests Completed!', 'success');
+        }
+
+        // Initial status
+        log('Database Integration Test Page Loaded');
+        log('Ready to test French Pressing App database functionality');
+    </script>
+</body>
+</html>
