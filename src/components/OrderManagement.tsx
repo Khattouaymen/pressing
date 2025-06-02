@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -9,14 +8,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Package, Clock, CheckCircle, Printer, QrCode, Euro, UserCheck } from "lucide-react";
+import { Plus, Search, Package, Clock, CheckCircle, Printer, QrCode, Euro, UserCheck, Minus, X } from "lucide-react";
+
+interface Piece {
+  id: string;
+  name: string;
+  category: 'vetement' | 'linge' | 'accessoire';
+  pressingPrice: number;
+  cleaningPressingPrice: number;
+}
+
+interface OrderPiece {
+  pieceId: string;
+  pieceName: string;
+  serviceType: 'pressing' | 'cleaning-pressing';
+  quantity: number;
+  unitPrice: number;
+  totalPrice: number;
+}
 
 interface Order {
   id: string;
   clientName: string;
   clientId: string;
-  service: 'pressing' | 'cleaning-pressing';
-  pieces: number;
+  pieces: OrderPiece[];
   totalAmount: number;
   status: 'received' | 'processing' | 'ready' | 'collected';
   createdAt: string;
@@ -38,6 +53,24 @@ interface Client {
 }
 
 export const OrderManagement = () => {
+  // Available pieces with their prices
+  const availablePieces: Piece[] = [
+    { id: 'chemise', name: 'Chemise', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00 },
+    { id: 'pantalon', name: 'Pantalon', category: 'vetement', pressingPrice: 4.00, cleaningPressingPrice: 9.00 },
+    { id: 'veste', name: 'Veste', category: 'vetement', pressingPrice: 6.00, cleaningPressingPrice: 12.00 },
+    { id: 'robe', name: 'Robe', category: 'vetement', pressingPrice: 5.00, cleaningPressingPrice: 10.00 },
+    { id: 'jupe', name: 'Jupe', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00 },
+    { id: 'pull', name: 'Pull/Tricot', category: 'vetement', pressingPrice: 4.50, cleaningPressingPrice: 9.50 },
+    { id: 'costume', name: 'Costume complet', category: 'vetement', pressingPrice: 12.00, cleaningPressingPrice: 20.00 },
+    { id: 'manteau', name: 'Manteau', category: 'vetement', pressingPrice: 8.00, cleaningPressingPrice: 15.00 },
+    { id: 'drap', name: 'Drap', category: 'linge', pressingPrice: 5.00, cleaningPressingPrice: 8.00 },
+    { id: 'housse', name: 'Housse de couette', category: 'linge', pressingPrice: 6.00, cleaningPressingPrice: 10.00 },
+    { id: 'nappe', name: 'Nappe', category: 'linge', pressingPrice: 4.00, cleaningPressingPrice: 7.00 },
+    { id: 'rideau', name: 'Rideau', category: 'linge', pressingPrice: 8.00, cleaningPressingPrice: 12.00 },
+    { id: 'cravate', name: 'Cravate', category: 'accessoire', pressingPrice: 2.50, cleaningPressingPrice: 5.00 },
+    { id: 'foulard', name: 'Foulard', category: 'accessoire', pressingPrice: 3.00, cleaningPressingPrice: 6.00 }
+  ];
+
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
@@ -53,20 +86,13 @@ export const OrderManagement = () => {
     type: 'individual' as 'individual' | 'professional',
     companyName: ''
   });
-  const [newOrder, setNewOrder] = useState({
-    clientId: '',
-    clientName: '',
-    service: 'pressing' as 'pressing' | 'cleaning-pressing',
-    pieces: 1,
-    isExceptionalPrice: false,
-    exceptionalAmount: 0
-  });
-
-  // Prix standards
-  const STANDARD_PRICES = {
-    pressing: 3.50,
-    'cleaning-pressing': 8.00
-  };
+  
+  const [orderPieces, setOrderPieces] = useState<OrderPiece[]>([]);
+  const [selectedPieceId, setSelectedPieceId] = useState<string>('');
+  const [selectedServiceType, setSelectedServiceType] = useState<'pressing' | 'cleaning-pressing'>('pressing');
+  const [pieceQuantity, setPieceQuantity] = useState(1);
+  const [isExceptionalPrice, setIsExceptionalPrice] = useState(false);
+  const [exceptionalTotal, setExceptionalTotal] = useState(0);
 
   // Mock clients data
   const [clients] = useState<Client[]>([
@@ -106,9 +132,11 @@ export const OrderManagement = () => {
       id: "PR2024-001234",
       clientName: "Marie Dubois",
       clientId: "CLI001",
-      service: "cleaning-pressing",
-      pieces: 6,
-      totalAmount: 48.00,
+      pieces: [
+        { pieceId: 'chemise', pieceName: 'Chemise', serviceType: 'cleaning-pressing', quantity: 3, unitPrice: 8.00, totalPrice: 24.00 },
+        { pieceId: 'pantalon', pieceName: 'Pantalon', serviceType: 'cleaning-pressing', quantity: 2, unitPrice: 9.00, totalPrice: 18.00 }
+      ],
+      totalAmount: 42.00,
       status: "processing",
       createdAt: "2024-06-02T10:30:00",
       estimatedDate: "2024-06-04T17:00:00",
@@ -119,28 +147,16 @@ export const OrderManagement = () => {
       id: "PR2024-001235",
       clientName: "Pierre Martin",
       clientId: "CLI002",
-      service: "pressing",
-      pieces: 8,
-      totalAmount: 28.00,
+      pieces: [
+        { pieceId: 'chemise', pieceName: 'Chemise', serviceType: 'pressing', quantity: 5, unitPrice: 3.50, totalPrice: 17.50 },
+        { pieceId: 'veste', pieceName: 'Veste', serviceType: 'pressing', quantity: 1, unitPrice: 6.00, totalPrice: 6.00 }
+      ],
+      totalAmount: 23.50,
       status: "ready",
       createdAt: "2024-06-01T14:15:00",
       estimatedDate: "2024-06-03T17:00:00",
       paymentStatus: "paid",
       isExceptionalPrice: false
-    },
-    {
-      id: "PRO2024-001236",
-      clientName: "Hotel Royal",
-      clientId: "PRO001",
-      service: "cleaning-pressing",
-      pieces: 24,
-      totalAmount: 180.00,
-      status: "received",
-      createdAt: "2024-06-02T09:00:00",
-      estimatedDate: "2024-06-05T10:00:00",
-      paymentStatus: "pending",
-      isExceptionalPrice: true,
-      originalPrice: 192.00
     }
   ]);
 
@@ -153,6 +169,50 @@ export const OrderManagement = () => {
       (client.companyName && client.companyName.toLowerCase().includes(clientSearchTerm.toLowerCase()))
     )
   );
+
+  const addPieceToOrder = () => {
+    if (!selectedPieceId) return;
+
+    const piece = availablePieces.find(p => p.id === selectedPieceId);
+    if (!piece) return;
+
+    const unitPrice = selectedServiceType === 'pressing' ? piece.pressingPrice : piece.cleaningPressingPrice;
+    const totalPrice = unitPrice * pieceQuantity;
+
+    const newOrderPiece: OrderPiece = {
+      pieceId: piece.id,
+      pieceName: piece.name,
+      serviceType: selectedServiceType,
+      quantity: pieceQuantity,
+      unitPrice,
+      totalPrice
+    };
+
+    setOrderPieces([...orderPieces, newOrderPiece]);
+    setSelectedPieceId('');
+    setPieceQuantity(1);
+  };
+
+  const removePieceFromOrder = (index: number) => {
+    const newOrderPieces = orderPieces.filter((_, i) => i !== index);
+    setOrderPieces(newOrderPieces);
+  };
+
+  const updatePieceQuantity = (index: number, newQuantity: number) => {
+    if (newQuantity < 1) return;
+    
+    const newOrderPieces = [...orderPieces];
+    newOrderPieces[index].quantity = newQuantity;
+    newOrderPieces[index].totalPrice = newOrderPieces[index].unitPrice * newQuantity;
+    setOrderPieces(newOrderPieces);
+  };
+
+  const calculateOrderTotal = () => {
+    if (isExceptionalPrice) {
+      return exceptionalTotal;
+    }
+    return orderPieces.reduce((total, piece) => total + piece.totalPrice, 0);
+  };
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -182,13 +242,6 @@ export const OrderManagement = () => {
     }
   };
 
-  const calculateTotal = () => {
-    if (newOrder.isExceptionalPrice) {
-      return newOrder.exceptionalAmount;
-    }
-    return STANDARD_PRICES[newOrder.service] * newOrder.pieces;
-  };
-
   const generateTrackingCode = () => {
     const timestamp = Date.now().toString().slice(-6);
     const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
@@ -196,6 +249,8 @@ export const OrderManagement = () => {
   };
 
   const handleCreateOrder = () => {
+    if (orderPieces.length === 0) return;
+
     let clientInfo;
     
     if (clientMode === 'search' && selectedClient) {
@@ -215,13 +270,14 @@ export const OrderManagement = () => {
 
     const trackingCode = generateTrackingCode();
     console.log('Creating order:', {
-      ...newOrder,
       ...clientInfo,
       id: trackingCode,
-      totalAmount: calculateTotal(),
+      pieces: orderPieces,
+      totalAmount: calculateOrderTotal(),
       createdAt: new Date().toISOString(),
       status: 'received',
-      paymentStatus: 'paid'
+      paymentStatus: 'paid',
+      isExceptionalPrice
     });
     
     resetForm();
@@ -241,14 +297,12 @@ export const OrderManagement = () => {
       type: 'individual',
       companyName: ''
     });
-    setNewOrder({
-      clientId: '',
-      clientName: '',
-      service: 'pressing',
-      pieces: 1,
-      isExceptionalPrice: false,
-      exceptionalAmount: 0
-    });
+    setOrderPieces([]);
+    setSelectedPieceId('');
+    setSelectedServiceType('pressing');
+    setPieceQuantity(1);
+    setIsExceptionalPrice(false);
+    setExceptionalTotal(0);
   };
 
   const handleDialogOpenChange = (open: boolean) => {
@@ -289,11 +343,11 @@ export const OrderManagement = () => {
               Nouvelle Commande
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[700px] max-h-[90vh] overflow-y-auto">
+          <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
             <DialogHeader>
               <DialogTitle>Créer une nouvelle commande</DialogTitle>
               <DialogDescription>
-                Recherchez un client existant ou créez un nouveau client, puis enregistrez la commande
+                Recherchez un client existant ou créez un nouveau client, puis sélectionnez les pièces à traiter
               </DialogDescription>
             </DialogHeader>
             
@@ -472,45 +526,120 @@ export const OrderManagement = () => {
 
               <Separator />
 
-              {/* Détails de la commande */}
+              {/* Sélection des pièces */}
               <div className="space-y-4">
-                <Label className="text-base font-medium">Détails de la commande</Label>
+                <Label className="text-base font-medium">Sélection des pièces</Label>
                 
-                {/* Service */}
-                <div>
-                  <Label htmlFor="service">Type de service</Label>
-                  <Select value={newOrder.service} onValueChange={(value: any) => setNewOrder({...newOrder, service: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="pressing">
-                        <div className="flex justify-between items-center w-full">
-                          <span>Repassage uniquement</span>
-                          <span className="text-gray-500 ml-4">€{STANDARD_PRICES.pressing}/pièce</span>
-                        </div>
-                      </SelectItem>
-                      <SelectItem value="cleaning-pressing">
-                        <div className="flex justify-between items-center w-full">
-                          <span>Nettoyage + Repassage</span>
-                          <span className="text-gray-500 ml-4">€{STANDARD_PRICES['cleaning-pressing']}/pièce</span>
-                        </div>
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                  <div>
+                    <Label htmlFor="piece">Type de pièce</Label>
+                    <Select value={selectedPieceId} onValueChange={setSelectedPieceId}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choisir une pièce" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {availablePieces.map((piece) => (
+                          <SelectItem key={piece.id} value={piece.id}>
+                            {piece.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="serviceType">Service</Label>
+                    <Select value={selectedServiceType} onValueChange={(value: any) => setSelectedServiceType(value)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="pressing">Repassage</SelectItem>
+                        <SelectItem value="cleaning-pressing">Nettoyage + Repassage</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div>
+                    <Label htmlFor="quantity">Quantité</Label>
+                    <Input
+                      id="quantity"
+                      type="number"
+                      min="1"
+                      value={pieceQuantity}
+                      onChange={(e) => setPieceQuantity(parseInt(e.target.value) || 1)}
+                    />
+                  </div>
+                  
+                  <div className="flex items-end">
+                    <Button 
+                      onClick={addPieceToOrder}
+                      disabled={!selectedPieceId}
+                      className="w-full"
+                    >
+                      <Plus className="w-4 h-4 mr-2" />
+                      Ajouter
+                    </Button>
+                  </div>
                 </div>
 
-                {/* Nombre de pièces */}
-                <div>
-                  <Label htmlFor="pieces">Nombre de pièces</Label>
-                  <Input
-                    id="pieces"
-                    type="number"
-                    min="1"
-                    value={newOrder.pieces}
-                    onChange={(e) => setNewOrder({...newOrder, pieces: parseInt(e.target.value) || 1})}
-                  />
-                </div>
+                {selectedPieceId && (
+                  <div className="text-sm text-gray-600 bg-gray-50 p-3 rounded">
+                    Prix: €{selectedServiceType === 'pressing' 
+                      ? availablePieces.find(p => p.id === selectedPieceId)?.pressingPrice 
+                      : availablePieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice} 
+                    par pièce
+                  </div>
+                )}
+
+                {/* Liste des pièces ajoutées */}
+                {orderPieces.length > 0 && (
+                  <div className="space-y-3">
+                    <h4 className="font-medium">Pièces sélectionnées:</h4>
+                    <div className="space-y-2">
+                      {orderPieces.map((piece, index) => (
+                        <div key={index} className="flex items-center justify-between p-3 border rounded bg-gray-50">
+                          <div className="flex-1">
+                            <div className="font-medium">{piece.pieceName}</div>
+                            <div className="text-sm text-gray-600">
+                              {getServiceLabel(piece.serviceType)} - €{piece.unitPrice} x {piece.quantity}
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => updatePieceQuantity(index, piece.quantity - 1)}
+                                disabled={piece.quantity <= 1}
+                              >
+                                <Minus className="w-3 h-3" />
+                              </Button>
+                              <span className="mx-2 min-w-[2rem] text-center">{piece.quantity}</span>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => updatePieceQuantity(index, piece.quantity + 1)}
+                              >
+                                <Plus className="w-3 h-3" />
+                              </Button>
+                            </div>
+                            <div className="font-medium min-w-[4rem] text-right">
+                              €{piece.totalPrice.toFixed(2)}
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => removePieceFromOrder(index)}
+                            >
+                              <X className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Prix exceptionnel */}
                 <div className="space-y-3">
@@ -518,22 +647,22 @@ export const OrderManagement = () => {
                     <input
                       type="checkbox"
                       id="exceptionalPrice"
-                      checked={newOrder.isExceptionalPrice}
-                      onChange={(e) => setNewOrder({...newOrder, isExceptionalPrice: e.target.checked})}
+                      checked={isExceptionalPrice}
+                      onChange={(e) => setIsExceptionalPrice(e.target.checked)}
                     />
                     <Label htmlFor="exceptionalPrice">Appliquer un prix exceptionnel</Label>
                   </div>
                   
-                  {newOrder.isExceptionalPrice && (
+                  {isExceptionalPrice && (
                     <div>
-                      <Label htmlFor="exceptionalAmount">Montant exceptionnel</Label>
+                      <Label htmlFor="exceptionalAmount">Montant total exceptionnel</Label>
                       <Input
                         id="exceptionalAmount"
                         type="number"
                         step="0.50"
                         min="0"
-                        value={newOrder.exceptionalAmount}
-                        onChange={(e) => setNewOrder({...newOrder, exceptionalAmount: parseFloat(e.target.value) || 0})}
+                        value={exceptionalTotal}
+                        onChange={(e) => setExceptionalTotal(parseFloat(e.target.value) || 0)}
                       />
                     </div>
                   )}
@@ -557,20 +686,10 @@ export const OrderManagement = () => {
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span>Service:</span>
-                  <span>{getServiceLabel(newOrder.service)}</span>
-                </div>
-                <div className="flex justify-between text-sm">
                   <span>Nombre de pièces:</span>
-                  <span>{newOrder.pieces}</span>
+                  <span>{orderPieces.reduce((total, piece) => total + piece.quantity, 0)}</span>
                 </div>
-                {!newOrder.isExceptionalPrice && (
-                  <div className="flex justify-between text-sm">
-                    <span>Prix unitaire:</span>
-                    <span>€{STANDARD_PRICES[newOrder.service]}</span>
-                  </div>
-                )}
-                {newOrder.isExceptionalPrice && (
+                {isExceptionalPrice && (
                   <div className="flex justify-between text-sm text-orange-600">
                     <span>Prix exceptionnel appliqué:</span>
                     <span>Oui</span>
@@ -578,7 +697,7 @@ export const OrderManagement = () => {
                 )}
                 <div className="flex justify-between font-medium pt-2 border-t">
                   <span>Total:</span>
-                  <span>€{calculateTotal().toFixed(2)}</span>
+                  <span>€{calculateOrderTotal().toFixed(2)}</span>
                 </div>
               </div>
               
@@ -590,7 +709,8 @@ export const OrderManagement = () => {
                   onClick={handleCreateOrder}
                   disabled={
                     (clientMode === 'search' && !selectedClient) ||
-                    (clientMode === 'create' && (!newClient.firstName || !newClient.lastName))
+                    (clientMode === 'create' && (!newClient.firstName || !newClient.lastName)) ||
+                    orderPieces.length === 0
                   }
                 >
                   Créer la commande
@@ -670,12 +790,20 @@ export const OrderManagement = () => {
                       <div className="font-medium">{order.clientName}</div>
                     </div>
                     <div>
-                      <span className="text-gray-600">Service:</span>
-                      <div className="font-medium">{getServiceLabel(order.service)}</div>
+                      <span className="text-gray-600">Pièces:</span>
+                      <div className="font-medium">
+                        {order.pieces.reduce((total, piece) => total + piece.quantity, 0)} pièces
+                      </div>
                     </div>
                     <div>
-                      <span className="text-gray-600">Pièces:</span>
-                      <div className="font-medium">{order.pieces} pièces</div>
+                      <span className="text-gray-600">Détail:</span>
+                      <div className="text-xs">
+                        {order.pieces.map((piece, index) => (
+                          <div key={index}>
+                            {piece.quantity}x {piece.pieceName} ({getServiceLabel(piece.serviceType)})
+                          </div>
+                        ))}
+                      </div>
                     </div>
                   </div>
                   
