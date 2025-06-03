@@ -293,15 +293,209 @@ export const OrderManagement = () => {
       default: return Package;
     }
   };
-
   const handlePrintReceipt = (order: Order) => {
     console.log('Impression du reçu pour la commande:', order.id);
-    // Ici on pourrait intégrer une solution d'impression
+    
+    // Créer le contenu HTML du reçu
+    const receiptContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Reçu - Commande ${order.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; }
+          .header { text-align: center; border-bottom: 2px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+          .company { font-size: 24px; font-weight: bold; color: #333; }
+          .subtitle { color: #666; margin-top: 5px; }
+          .order-info { display: flex; justify-content: space-between; margin: 20px 0; }
+          .section { margin: 20px 0; }
+          .items-table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+          .items-table th, .items-table td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+          .items-table th { background-color: #f5f5f5; font-weight: bold; }
+          .total { text-align: right; font-size: 18px; font-weight: bold; margin-top: 20px; }
+          .footer { margin-top: 40px; text-align: center; color: #666; font-size: 12px; }
+          .status-badge { padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+          .status-received { background-color: #dbeafe; color: #1e40af; }
+          .status-processing { background-color: #fef3c7; color: #92400e; }
+          .status-ready { background-color: #d1fae5; color: #065f46; }
+          .status-delivered { background-color: #f3f4f6; color: #374151; }
+          .payment-paid { background-color: #d1fae5; color: #065f46; }
+          .payment-pending { background-color: #fef3c7; color: #92400e; }
+          .payment-overdue { background-color: #fee2e2; color: #b91c1c; }
+        </style>
+      </head>
+      <body>
+        <div class="header">
+          <div class="company">PressingPro</div>
+          <div class="subtitle">Pressing & Nettoyage à sec</div>
+          <div class="subtitle">Téléphone: 01 23 45 67 89 | Email: contact@pressingpro.fr</div>
+        </div>
+        
+        <div class="order-info">
+          <div>
+            <strong>Commande N°:</strong> ${order.id}<br>
+            <strong>Date:</strong> ${new Date(order.createdAt).toLocaleDateString('fr-FR')}<br>
+            <strong>Prêt le:</strong> ${new Date(order.estimatedDate).toLocaleDateString('fr-FR')}
+          </div>
+          <div>
+            <strong>Client:</strong> ${order.clientName}<br>
+            <strong>Statut:</strong> <span class="status-badge status-${order.status}">${getStatusLabel(order.status)}</span><br>
+            <strong>Paiement:</strong> <span class="status-badge payment-${order.paymentStatus}">${order.paymentStatus === 'paid' ? 'Payé' : order.paymentStatus === 'pending' ? 'En attente' : 'En retard'}</span>
+          </div>
+        </div>
+        
+        <div class="section">
+          <h3>Détail des pièces</h3>
+          <table class="items-table">
+            <thead>
+              <tr>
+                <th>Article</th>
+                <th>Service</th>
+                <th>Quantité</th>
+                <th>Prix unitaire</th>
+                <th>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${order.pieces.map(piece => `
+                <tr>
+                  <td>${piece.pieceName}</td>
+                  <td>${getServiceLabel(piece.serviceType)}</td>
+                  <td>${piece.quantity}</td>
+                  <td>€${piece.unitPrice.toFixed(2)}</td>
+                  <td>€${piece.totalPrice.toFixed(2)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+        
+        ${order.isExceptionalPrice ? `
+          <div class="section">
+            <p><strong>Note:</strong> Prix exceptionnel appliqué à cette commande.</p>
+          </div>
+        ` : ''}
+        
+        <div class="total">
+          <strong>TOTAL: €${order.totalAmount.toFixed(2)}</strong>
+        </div>
+        
+        <div class="footer">
+          <p>Merci de votre confiance !</p>
+          <p>Ce reçu a été généré le ${new Date().toLocaleDateString('fr-FR')} à ${new Date().toLocaleTimeString('fr-FR')}</p>
+        </div>
+      </body>
+      </html>
+    `;
+    
+    // Ouvrir une nouvelle fenêtre pour l'impression
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(receiptContent);
+      printWindow.document.close();
+      printWindow.focus();
+      
+      // Attendre que le contenu soit chargé puis lancer l'impression
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    } else {
+      toast.error('Impossible d\'ouvrir la fenêtre d\'impression. Vérifiez les pop-ups.');
+    }
   };
-
   const handlePrintLabels = (order: Order) => {
     console.log('Impression des étiquettes pour la commande:', order.id);
-    // Ici on pourrait intégrer une solution d'impression d'étiquettes
+    
+    // Créer le contenu HTML des étiquettes
+    const labelsContent = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="utf-8">
+        <title>Étiquettes - Commande ${order.id}</title>
+        <style>
+          body { font-family: Arial, sans-serif; margin: 0; padding: 20px; }
+          .label { 
+            width: 8cm; 
+            height: 5cm; 
+            border: 2px solid #333; 
+            margin: 10px; 
+            padding: 10px; 
+            display: inline-block; 
+            vertical-align: top;
+            page-break-inside: avoid;
+            box-sizing: border-box;
+          }
+          .label-header { 
+            text-align: center; 
+            font-weight: bold; 
+            font-size: 14px; 
+            border-bottom: 1px solid #333; 
+            padding-bottom: 5px; 
+            margin-bottom: 8px;
+          }
+          .order-id { font-size: 18px; font-weight: bold; text-align: center; margin: 5px 0; }
+          .client-name { font-size: 14px; font-weight: bold; margin: 5px 0; }
+          .item-info { font-size: 12px; margin: 3px 0; }
+          .dates { font-size: 11px; margin-top: 8px; border-top: 1px solid #ccc; padding-top: 5px; }
+          .qr-placeholder { 
+            width: 40px; 
+            height: 40px; 
+            border: 1px solid #333; 
+            float: right; 
+            margin-top: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 10px;
+          }
+          @media print {
+            body { margin: 0; }
+            .label { margin: 5px; }
+          }
+        </style>
+      </head>
+      <body>
+        ${order.pieces.map((piece, index) => {
+          // Générer une étiquette pour chaque pièce (en tenant compte de la quantité)
+          return Array.from({ length: piece.quantity }, (_, qtyIndex) => `
+            <div class="label">
+              <div class="label-header">PRESSINGPRO</div>
+              <div class="order-id">${order.id}</div>
+              <div class="client-name">${order.clientName}</div>
+              <div class="qr-placeholder">QR</div>
+              <div class="item-info">
+                <strong>${piece.pieceName}</strong><br>
+                ${getServiceLabel(piece.serviceType)}<br>
+                Pièce ${qtyIndex + 1}/${piece.quantity}
+              </div>
+              <div class="dates">
+                Reçu: ${new Date(order.createdAt).toLocaleDateString('fr-FR')}<br>
+                Prêt: ${new Date(order.estimatedDate).toLocaleDateString('fr-FR')}<br>
+                Total: €${order.totalAmount.toFixed(2)}
+              </div>
+            </div>
+          `).join('');
+        }).join('')}
+      </body>
+      </html>
+    `;
+    
+    // Ouvrir une nouvelle fenêtre pour l'impression
+    const printWindow = window.open('', '_blank');
+    if (printWindow) {
+      printWindow.document.write(labelsContent);
+      printWindow.document.close();
+      printWindow.focus();
+      
+      // Attendre que le contenu soit chargé puis lancer l'impression
+      setTimeout(() => {
+        printWindow.print();
+      }, 500);
+    } else {
+      toast.error('Impossible d\'ouvrir la fenêtre d\'impression. Vérifiez les pop-ups.');
+    }
   };
 
   const resetForm = () => {
