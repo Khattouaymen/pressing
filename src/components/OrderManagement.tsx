@@ -440,8 +440,7 @@ export const OrderManagement = () => {
               ${order.pieces.map(piece => `                <tr>
                   <td>${piece.pieceName}</td>
                   <td>${getServiceLabel(piece.serviceType)}</td>
-                  <td>${piece.quantity}</td>
-                  <td>${piece.unitPrice.toFixed(2)} DH</td>
+                  <td>${piece.quantity}</td>                  <td>${piece.unitPrice.toFixed(2)} DH</td>
                   <td>${piece.totalPrice.toFixed(2)} DH</td>
                 </tr>
               `).join('')}
@@ -950,10 +949,10 @@ export const OrderManagement = () => {
                         )}
                         <div className="text-center">
                           <div className="font-medium text-sm mb-1">{piece.name}</div>                          <div className="text-xs text-gray-600">
-                            Repassage: {piece.pressingPrice.toFixed(2)} DH
+                            Repassage: {`${piece.pressingPrice.toFixed(2)} DH`}
                           </div>
                           <div className="text-xs text-gray-600">
-                            Nettoyage: {piece.cleaningPressingPrice.toFixed(2)} DH
+                            Nettoyage: {`${piece.cleaningPressingPrice.toFixed(2)} DH`}
                           </div>
                         </div>
                       </div>
@@ -1015,12 +1014,11 @@ export const OrderManagement = () => {
                         <h4 className="font-medium text-sm mb-1">
                           {pieces.find(p => p.id === selectedPieceId)?.name}
                         </h4>                        <div className="text-sm text-gray-600">
-                          <div>Repassage: {pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)} DH</div>
-                          <div>Nettoyage + Repassage: {pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH</div>
-                        </div>                        <div className="text-sm font-medium text-blue-600 mt-1">
-                          Service sélectionné: {selectedServiceType === 'pressing'
+                          <div>Repassage: {`${pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)} DH`}</div>
+                          <div>Nettoyage + Repassage: {`${pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH`}</div>
+                        </div>                        <div className="text-sm font-medium text-blue-600 mt-1">                          Service sélectionné: {`${selectedServiceType === 'pressing'
                             ? pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)
-                            : pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH
+                            : pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH`}
                           par pièce
                         </div>
                       </div>
@@ -1047,7 +1045,7 @@ export const OrderManagement = () => {
                             )}
                             <div className="flex-1">
                               <div className="font-medium">{piece.pieceName}</div>                              <div className="text-sm text-gray-600">
-                                {getServiceLabel(piece.serviceType)} - {piece.unitPrice.toFixed(2)} DH x {piece.quantity}
+                                {getServiceLabel(piece.serviceType)} - {`${piece.unitPrice.toFixed(2)} DH`} x {piece.quantity}
                               </div>
                             </div>
                           </div>
@@ -1070,7 +1068,7 @@ export const OrderManagement = () => {
                                 <Plus className="w-3 h-3" />
                               </Button>
                             </div>                            <div className="font-medium min-w-[4rem] text-right">
-                              {piece.totalPrice.toFixed(2)} DH
+                              {`${piece.totalPrice.toFixed(2)} DH`}
                             </div>
                             <Button
                               variant="outline"
@@ -1163,7 +1161,7 @@ export const OrderManagement = () => {
                   </span>
                 </div>                <div className="flex justify-between font-medium pt-2 border-t">
                   <span>Total:</span>
-                  <span>{calculateOrderTotal().toFixed(2)} DH</span>
+                  <span>{`${calculateOrderTotal().toFixed(2)} DH`}</span>
                 </div>
               </div>
               
@@ -1290,10 +1288,8 @@ export const OrderManagement = () => {
                     <div>
                       <span className="text-gray-600">Prêt le:</span>
                       <div className="font-medium">{new Date(order.estimatedDate).toLocaleDateString('fr-FR')}</div>
-                    </div>
-                    <div>                      <span className="text-gray-600">Montant:</span>
-                      <div className="font-medium flex items-center gap-2">
-                        {order.totalAmount.toFixed(2)} DH
+                    </div>                    <div>                      <span className="text-gray-600">Montant:</span>                      <div className="font-medium flex items-center gap-2">
+                        {order.totalAmount.toFixed(2) + " DH"}
                         {order.isExceptionalPrice && (
                           <Badge variant="outline" className="text-xs">
                             Prix exceptionnel
