@@ -220,7 +220,6 @@ class DatabaseManager {
   getAllOrders() {
     return this.db.prepare('SELECT * FROM orders ORDER BY createdAt DESC').all();
   }
-
   insertOrder(order) {
     const stmt = this.db.prepare(`
       INSERT INTO orders (id, clientId, clientName, totalAmount, status, paymentStatus, createdAt, estimatedDate, isExceptionalPrice)
@@ -229,10 +228,9 @@ class DatabaseManager {
     stmt.run(
       order.id, order.clientId, order.clientName, order.totalAmount,
       order.status, order.paymentStatus, order.createdAt, order.estimatedDate,
-      order.isExceptionalPrice
+      order.isExceptionalPrice ? 1 : 0  // Convert boolean to integer
     );
   }
-
   updateOrder(order) {
     const stmt = this.db.prepare(`
       UPDATE orders SET clientId = ?, clientName = ?, totalAmount = ?, status = ?,
@@ -241,7 +239,7 @@ class DatabaseManager {
     `);
     stmt.run(
       order.clientId, order.clientName, order.totalAmount, order.status,
-      order.paymentStatus, order.estimatedDate, order.isExceptionalPrice, order.id
+      order.paymentStatus, order.estimatedDate, order.isExceptionalPrice ? 1 : 0, order.id
     );
   }
 
@@ -453,32 +451,52 @@ app.get('/api/orders', (req, res) => {
 
 app.post('/api/orders', (req, res) => {
   try {
-    const orderId = Date.now().toString();
+    const orderId = req.body.id || Date.now().toString();
+    
+    // Extraire seulement les champs nécessaires pour la table orders
     const order = {
-      ...req.body,
       id: orderId,
-      createdAt: new Date().toISOString()
+      clientId: req.body.clientId,
+      clientName: req.body.clientName,
+      totalAmount: req.body.totalAmount,
+      status: req.body.status,
+      paymentStatus: req.body.paymentStatus,
+      createdAt: req.body.createdAt || new Date().toISOString(),
+      estimatedDate: req.body.estimatedDate,
+      isExceptionalPrice: req.body.isExceptionalPrice || false
     };
+    
+    console.log('🔍 Données de la commande à insérer:', order);
     
     db.insertOrder(order);
     
     // Insérer les pièces de la commande
-    req.body.pieces.forEach(piece => {
-      const orderPiece = {
-        id: `${orderId}_${piece.pieceId}_${Date.now()}`,
-        orderId: orderId,
-        pieceId: piece.pieceId,
-        pieceName: piece.pieceName,
-        serviceType: piece.serviceType,
-        quantity: piece.quantity,
-        unitPrice: piece.unitPrice,
-        totalPrice: piece.totalPrice
-      };
-      db.insertOrderPiece(orderPiece);
-    });
+    if (req.body.pieces && req.body.pieces.length > 0) {
+      req.body.pieces.forEach((piece, index) => {
+        const orderPiece = {
+          id: `${orderId}_${piece.pieceId}_${index}`,
+          orderId: orderId,
+          pieceId: piece.pieceId,
+          pieceName: piece.pieceName,
+          serviceType: piece.serviceType,
+          quantity: piece.quantity,
+          unitPrice: piece.unitPrice,
+          totalPrice: piece.totalPrice
+        };
+        console.log('🔍 Pièce de commande à insérer:', orderPiece);
+        db.insertOrderPiece(orderPiece);
+      });
+    }
     
-    res.json(order);
+    // Retourner la commande complète avec les pièces
+    const completeOrder = {
+      ...order,
+      pieces: req.body.pieces || []
+    };
+    
+    res.json(completeOrder);
   } catch (error) {
+    console.error('❌ Erreur lors de la création de la commande:', error);
     res.status(500).json({ error: error.message });
   }
 });

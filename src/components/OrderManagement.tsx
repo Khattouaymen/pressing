@@ -91,13 +91,13 @@ export const OrderManagement = () => {
     if (newClient.type === 'professional' && !newClient.companyName) {
       toast.error('Veuillez saisir le nom de l\'entreprise');
       return;
-    }
-
-    try {
+    }    try {
       const clientData = {
         id: `CLI${Date.now()}`, // Génération d'un ID simple
         ...newClient,
         createdAt: new Date().toISOString(),
+        totalOrders: 0,
+        totalSpent: 0,
         ...(newClient.type === 'individual' ? { companyName: undefined } : {}),
       };
       
@@ -120,17 +120,25 @@ export const OrderManagement = () => {
     }
   };  // Création d'une nouvelle commande
   const handleCreateOrder = async () => {
+    console.log('🚀 Début de la création de la commande');
+    console.log('📝 Client sélectionné:', selectedClient);
+    console.log('📦 Pièces de la commande:', orderPieces);
+    console.log('💰 Prix exceptionnel:', isExceptionalPrice, 'Montant:', exceptionalTotal);
+
     if (!selectedClient) {
+      console.log('❌ Erreur: Aucun client sélectionné');
       toast.error('Veuillez sélectionner un client');
       return;
     }
 
     if (orderPieces.length === 0) {
+      console.log('❌ Erreur: Aucune pièce ajoutée');
       toast.error('Veuillez ajouter au moins une pièce à la commande');
       return;
     }
 
     if (isExceptionalPrice && exceptionalTotal <= 0) {
+      console.log('❌ Erreur: Montant exceptionnel invalide');
       toast.error('Le montant exceptionnel doit être supérieur à 0');
       return;
     }
@@ -154,7 +162,11 @@ export const OrderManagement = () => {
         ...(isExceptionalPrice ? { originalPrice: orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0) } : {}),
       };
 
-      await addOrder(orderData);
+      console.log('📋 Données de la commande à ajouter:', orderData);
+      console.log('🔄 Appel de addOrder...');
+      
+      const result = await addOrder(orderData);
+      console.log('✅ Commande créée avec succès:', result);
       
       // Reset du formulaire
       setIsCreatingOrder(false);
@@ -167,14 +179,18 @@ export const OrderManagement = () => {
       
       toast.success(`Commande ${orderData.id} créée avec succès pour ${selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`}`);
     } catch (error) {
-      console.error('Erreur lors de la création de la commande:', error);
-      toast.error('Erreur lors de la création de la commande');
+      console.error('❌ Erreur détaillée lors de la création de la commande:', error);
+      console.error('📊 Stack trace:', error.stack);
+      toast.error(`Erreur lors de la création de la commande: ${error.message || error}`);
     }
-  };
-  // Mise à jour du statut d'une commande
+  };// Mise à jour du statut d'une commande
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
-      await updateOrder(orderId, { status: newStatus });
+      const orderToUpdate = orders.find(order => order.id === orderId);
+      if (!orderToUpdate) {
+        throw new Error('Commande non trouvée');
+      }
+      await updateOrder({ ...orderToUpdate, status: newStatus });
       toast.success(`Statut de la commande ${orderId} mis à jour`);
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la commande:', error);
@@ -185,7 +201,11 @@ export const OrderManagement = () => {
   // Mise à jour du statut de paiement
   const handleUpdatePaymentStatus = async (orderId: string, newPaymentStatus: Order['paymentStatus']) => {
     try {
-      await updateOrder(orderId, { paymentStatus: newPaymentStatus });
+      const orderToUpdate = orders.find(order => order.id === orderId);
+      if (!orderToUpdate) {
+        throw new Error('Commande non trouvée');
+      }
+      await updateOrder({ ...orderToUpdate, paymentStatus: newPaymentStatus });
       toast.success(`Statut de paiement mis à jour`);
     } catch (error) {
       console.error('Erreur lors de la mise à jour du paiement:', error);
