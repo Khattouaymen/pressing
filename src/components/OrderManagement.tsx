@@ -100,8 +100,14 @@ export const OrderManagement = () => {
       toast.error('Veuillez saisir le nom de l\'entreprise');
       return;
     }    try {
+      // Générer le prochain numéro de client séquentiel
+      let nextClientNumber = 1;
+      while (clients.some(client => client.id === `CLI${nextClientNumber}`)) {
+        nextClientNumber++;
+      }
+      
       const clientData = {
-        id: `CLI${Date.now()}`, // Génération d'un ID simple
+        id: `CLI${nextClientNumber}`, // Génération d'un ID séquentiel commençant par 1
         ...newClient,
         createdAt: new Date().toISOString(),
         totalOrders: 0,
@@ -168,7 +174,12 @@ export const OrderManagement = () => {
     }    try {
       const totalAmount = isExceptionalPrice 
         ? exceptionalTotal 
-        : orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0);
+        : orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0);      // Générer le prochain numéro de commande séquentiel
+      let nextOrderNumber = 1;
+      while (orders.some(order => order.id === `PR${nextOrderNumber}`)) {
+        nextOrderNumber++;
+      }
+      console.log('📊 Génération du numéro de commande:', nextOrderNumber);
 
       // Déterminer les informations du client selon le mode
       let clientData;
@@ -177,11 +188,16 @@ export const OrderManagement = () => {
       if (clientMode === 'search') {
         // Client existant sélectionné
         clientData = selectedClient;
-        clientName = `${selectedClient.firstName} ${selectedClient.lastName}`;
-      } else if (clientMode === 'create') {
+        clientName = `${selectedClient.firstName} ${selectedClient.lastName}`;      } else if (clientMode === 'create') {
         // Créer d'abord le nouveau client
+        // Générer le prochain numéro de client séquentiel
+        let nextClientNumber = 1;
+        while (clients.some(client => client.id === `CLI${nextClientNumber}`)) {
+          nextClientNumber++;
+        }
+        
         const newClientData = {
-          id: `CLI${Date.now()}`,
+          id: `CLI${nextClientNumber}`,
           ...newClient,
           createdAt: new Date().toISOString(),
           totalOrders: 0,
@@ -191,15 +207,18 @@ export const OrderManagement = () => {
         
         const createdClient = await addClient(newClientData);
         clientData = createdClient;
-        clientName = `${newClient.firstName} ${newClient.lastName}`;
-      } else {
+        clientName = `${newClient.firstName} ${newClient.lastName}`;      } else {
         // Mode guest - utiliser les informations temporaires
-        clientData = { id: `GUEST${Date.now()}`, ...guestClient };
+        // Générer le prochain numéro de client invité séquentiel
+        let nextGuestNumber = 1;
+        while (clients.some(client => client.id === `GUEST${nextGuestNumber}`)) {
+          nextGuestNumber++;
+        }
+        
+        clientData = { id: `GUEST${nextGuestNumber}`, ...guestClient };
         clientName = `${guestClient.firstName} ${guestClient.lastName}`;
-      }
-
-      const orderData: Order = {
-        id: `PR${Date.now()}`, // Génération d'un ID simple
+      }const orderData: Order = {
+        id: `PR${nextOrderNumber}`, // Génération d'un ID séquentiel commençant par 1
         clientId: clientData.id,
         clientName: clientName,
         pieces: orderPieces,
