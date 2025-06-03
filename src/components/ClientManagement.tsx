@@ -175,7 +175,7 @@ export const ClientManagement = () => {
         
         <div className="pt-3 border-t flex justify-between text-sm">
           <span><strong>{client.totalOrders}</strong> commandes</span>
-          <span><strong>€{client.totalSpent.toFixed(2)}</strong> dépensé</span>
+          <span><strong>{client.totalSpent.toFixed(2)} DH</strong> dépensé</span>
         </div>
         
         <Button variant="outline" className="w-full mt-3">

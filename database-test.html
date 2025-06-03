@@ -219,7 +219,7 @@
                 };
 
                 const addedOrder = await db.addProfessionalOrder(testOrder);
-                log(`Professional order added: ${addedOrder.orderNumber} (€${addedOrder.totalAmount})`, 'success');
+                log(`Professional order added: ${addedOrder.orderNumber} (${addedOrder.totalAmount} DH)`, 'success');
 
                 const profClients = await db.getProfessionalClients();
                 const profOrders = await db.getProfessionalOrders();

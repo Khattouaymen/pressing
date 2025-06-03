@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Search, Package, Clock, CheckCircle, Printer, QrCode, Euro, UserCheck, Minus, X } from "lucide-react";
+import { Plus, Search, Package, Clock, CheckCircle, Printer, QrCode, Coins, UserCheck, Minus, X } from "lucide-react";
 import { useClients, usePieces, useOrders, Client, Piece, Order, OrderPiece } from '@/hooks/useApiDatabase';
 
 export const OrderManagement = () => {
@@ -21,11 +21,19 @@ export const OrderManagement = () => {
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [isCreatingOrder, setIsCreatingOrder] = useState(false);
-  const [clientMode, setClientMode] = useState<'search' | 'create'>('search');
+  const [isCreatingOrder, setIsCreatingOrder] = useState(false);  const [clientMode, setClientMode] = useState<'search' | 'create' | 'guest'>('search');
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [newClient, setNewClient] = useState({
+    firstName: '',
+    lastName: '',
+    phone: '',
+    email: '',
+    address: '',
+    type: 'individual' as 'individual' | 'professional',
+    companyName: ''
+  });
+  const [guestClient, setGuestClient] = useState({
     firstName: '',
     lastName: '',
     phone: '',
@@ -121,13 +129,29 @@ export const OrderManagement = () => {
   };  // Création d'une nouvelle commande
   const handleCreateOrder = async () => {
     console.log('🚀 Début de la création de la commande');
+    console.log('📝 Mode client:', clientMode);
     console.log('📝 Client sélectionné:', selectedClient);
+    console.log('📝 Nouveau client:', newClient);
+    console.log('📝 Client invité:', guestClient);
     console.log('📦 Pièces de la commande:', orderPieces);
     console.log('💰 Prix exceptionnel:', isExceptionalPrice, 'Montant:', exceptionalTotal);
 
-    if (!selectedClient) {
+    // Validation selon le mode
+    if (clientMode === 'search' && !selectedClient) {
       console.log('❌ Erreur: Aucun client sélectionné');
       toast.error('Veuillez sélectionner un client');
+      return;
+    }
+
+    if (clientMode === 'create' && (!newClient.firstName || !newClient.lastName || !newClient.phone)) {
+      console.log('❌ Erreur: Informations client incomplètes');
+      toast.error('Veuillez remplir les champs obligatoires du nouveau client');
+      return;
+    }
+
+    if (clientMode === 'guest' && (!guestClient.firstName || !guestClient.lastName || !guestClient.phone)) {
+      console.log('❌ Erreur: Informations client invité incomplètes');
+      toast.error('Veuillez remplir les champs obligatoires du client');
       return;
     }
 
@@ -141,15 +165,43 @@ export const OrderManagement = () => {
       console.log('❌ Erreur: Montant exceptionnel invalide');
       toast.error('Le montant exceptionnel doit être supérieur à 0');
       return;
-    }
-
-    try {
+    }    try {
       const totalAmount = isExceptionalPrice 
         ? exceptionalTotal 
-        : orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0);      const orderData: Order = {
+        : orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0);
+
+      // Déterminer les informations du client selon le mode
+      let clientData;
+      let clientName;
+      
+      if (clientMode === 'search') {
+        // Client existant sélectionné
+        clientData = selectedClient;
+        clientName = `${selectedClient.firstName} ${selectedClient.lastName}`;
+      } else if (clientMode === 'create') {
+        // Créer d'abord le nouveau client
+        const newClientData = {
+          id: `CLI${Date.now()}`,
+          ...newClient,
+          createdAt: new Date().toISOString(),
+          totalOrders: 0,
+          totalSpent: 0,
+          ...(newClient.type === 'individual' ? { companyName: undefined } : {}),
+        };
+        
+        const createdClient = await addClient(newClientData);
+        clientData = createdClient;
+        clientName = `${newClient.firstName} ${newClient.lastName}`;
+      } else {
+        // Mode guest - utiliser les informations temporaires
+        clientData = { id: `GUEST${Date.now()}`, ...guestClient };
+        clientName = `${guestClient.firstName} ${guestClient.lastName}`;
+      }
+
+      const orderData: Order = {
         id: `PR${Date.now()}`, // Génération d'un ID simple
-        clientId: selectedClient.id,
-        clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
+        clientId: clientData.id,
+        clientName: clientName,
         pieces: orderPieces,
         totalAmount,
         status: 'received',
@@ -164,8 +216,7 @@ export const OrderManagement = () => {
       console.log('🔄 Appel de addOrder...');
       
       const result = await addOrder(orderData);
-      console.log('✅ Commande créée avec succès:', result);
-        // Reset du formulaire
+      console.log('✅ Commande créée avec succès:', result);        // Reset du formulaire
       setIsCreatingOrder(false);
       setSelectedClient(null);
       setOrderPieces([]);
@@ -175,7 +226,27 @@ export const OrderManagement = () => {
       setIsPaidInAdvance(false);
       setClientMode('search');
       
-      toast.success(`Commande ${orderData.id} créée avec succès pour ${selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`}`);
+      // Reset des données client selon le mode
+      setNewClient({
+        firstName: '',
+        lastName: '',
+        phone: '',
+        email: '',
+        address: '',
+        type: 'individual',
+        companyName: ''
+      });
+      setGuestClient({
+        firstName: '',
+        lastName: '',
+        phone: '',
+        email: '',
+        address: '',
+        type: 'individual',
+        companyName: ''
+      });
+      
+      toast.success(`Commande ${orderData.id} créée avec succès pour ${clientName}`);
     } catch (error) {
       console.error('❌ Erreur détaillée lors de la création de la commande:', error);
       console.error('📊 Stack trace:', error.stack);
@@ -219,8 +290,7 @@ export const OrderManagement = () => {
       console.error('Erreur lors de la mise à jour du paiement:', error);
       toast.error('Erreur lors de la mise à jour du paiement');
     }
-  };
-  // Gestion de l'ouverture/fermeture du dialog
+  };  // Gestion de l'ouverture/fermeture du dialog
   const handleDialogOpenChange = (open: boolean) => {
     setIsCreatingOrder(open);
     if (!open) {
@@ -233,6 +303,15 @@ export const OrderManagement = () => {
       setIsPaidInAdvance(false);
       setClientMode('search');
       setNewClient({
+        firstName: '',
+        lastName: '',
+        phone: '',
+        email: '',
+        address: '',
+        type: 'individual',
+        companyName: ''
+      });
+      setGuestClient({
         firstName: '',
         lastName: '',
         phone: '',
@@ -358,13 +437,12 @@ export const OrderManagement = () => {
               </tr>
             </thead>
             <tbody>
-              ${order.pieces.map(piece => `
-                <tr>
+              ${order.pieces.map(piece => `                <tr>
                   <td>${piece.pieceName}</td>
                   <td>${getServiceLabel(piece.serviceType)}</td>
                   <td>${piece.quantity}</td>
-                  <td>€${piece.unitPrice.toFixed(2)}</td>
-                  <td>€${piece.totalPrice.toFixed(2)}</td>
+                  <td>${piece.unitPrice.toFixed(2)} DH</td>
+                  <td>${piece.totalPrice.toFixed(2)} DH</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -376,9 +454,8 @@ export const OrderManagement = () => {
             <p><strong>Note:</strong> Prix exceptionnel appliqué à cette commande.</p>
           </div>
         ` : ''}
-        
-        <div class="total">
-          <strong>TOTAL: €${order.totalAmount.toFixed(2)}</strong>
+          <div class="total">
+          <strong>TOTAL: ${order.totalAmount.toFixed(2)} DH</strong>
         </div>
         
         <div class="footer">
@@ -473,7 +550,7 @@ export const OrderManagement = () => {
               <div class="dates">
                 Reçu: ${new Date(order.createdAt).toLocaleDateString('fr-FR')}<br>
                 Prêt: ${new Date(order.estimatedDate).toLocaleDateString('fr-FR')}<br>
-                Total: €${order.totalAmount.toFixed(2)}
+                Total: ${order.totalAmount.toFixed(2)} DH
               </div>
             </div>
           `).join('');
@@ -564,9 +641,8 @@ export const OrderManagement = () => {
             <div className="space-y-6">
               {/* Sélection/Création client */}
               <div>
-                <Label className="text-base font-medium">Client</Label>
-                <Tabs value={clientMode} onValueChange={(value: any) => setClientMode(value)} className="w-full mt-2">
-                  <TabsList className="grid w-full grid-cols-2">
+                <Label className="text-base font-medium">Client</Label>                <Tabs value={clientMode} onValueChange={(value: any) => setClientMode(value)} className="w-full mt-2">
+                  <TabsList className="grid w-full grid-cols-3">
                     <TabsTrigger value="search" className="flex items-center gap-2">
                       <Search className="w-4 h-4" />
                       Rechercher Client
@@ -574,6 +650,10 @@ export const OrderManagement = () => {
                     <TabsTrigger value="create" className="flex items-center gap-2">
                       <Plus className="w-4 h-4" />
                       Nouveau Client
+                    </TabsTrigger>
+                    <TabsTrigger value="guest" className="flex items-center gap-2">
+                      <UserCheck className="w-4 h-4" />
+                      Client Invité
                     </TabsTrigger>
                   </TabsList>
                   
@@ -729,8 +809,7 @@ export const OrderManagement = () => {
                         onChange={(e) => setNewClient({...newClient, address: e.target.value})}
                       />
                     </div>
-                    
-                    <Button 
+                      <Button 
                       onClick={handleCreateClient}
                       disabled={!newClient.firstName || !newClient.lastName || !newClient.phone}
                       className="w-full"
@@ -738,6 +817,104 @@ export const OrderManagement = () => {
                       <Plus className="w-4 h-4 mr-2" />
                       Créer ce client
                     </Button>
+                  </TabsContent>
+                  
+                  <TabsContent value="guest" className="space-y-4 mt-4">
+                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                      <div className="flex items-center gap-2 text-blue-800 mb-2">
+                        <UserCheck className="w-4 h-4" />
+                        <span className="font-medium">Client Invité</span>
+                      </div>
+                      <p className="text-sm text-blue-700">
+                        Les informations du client invité ne seront pas sauvegardées dans la base de données. 
+                        Elles ne serviront que pour cette commande.
+                      </p>
+                    </div>
+                    
+                    <Tabs value={guestClient.type} onValueChange={(value: any) => setGuestClient({...guestClient, type: value})}>
+                      <TabsList className="grid w-full grid-cols-2">
+                        <TabsTrigger value="individual">Particulier</TabsTrigger>
+                        <TabsTrigger value="professional">Professionnel</TabsTrigger>
+                      </TabsList>
+                      
+                      <TabsContent value="individual" className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="guestFirstName">Prénom</Label>
+                            <Input
+                              id="guestFirstName"
+                              value={guestClient.firstName}
+                              onChange={(e) => setGuestClient({...guestClient, firstName: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="guestLastName">Nom</Label>
+                            <Input
+                              id="guestLastName"
+                              value={guestClient.lastName}
+                              onChange={(e) => setGuestClient({...guestClient, lastName: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+                      
+                      <TabsContent value="professional" className="space-y-3">
+                        <div>
+                          <Label htmlFor="guestCompanyName">Raison sociale</Label>
+                          <Input
+                            id="guestCompanyName"
+                            value={guestClient.companyName}
+                            onChange={(e) => setGuestClient({...guestClient, companyName: e.target.value})}
+                          />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <Label htmlFor="guestFirstNamePro">Prénom contact</Label>
+                            <Input
+                              id="guestFirstNamePro"
+                              value={guestClient.firstName}
+                              onChange={(e) => setGuestClient({...guestClient, firstName: e.target.value})}
+                            />
+                          </div>
+                          <div>
+                            <Label htmlFor="guestLastNamePro">Nom contact</Label>
+                            <Input
+                              id="guestLastNamePro"
+                              value={guestClient.lastName}
+                              onChange={(e) => setGuestClient({...guestClient, lastName: e.target.value})}
+                            />
+                          </div>
+                        </div>
+                      </TabsContent>
+                    </Tabs>
+                    
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <Label htmlFor="guestPhone">Téléphone</Label>
+                        <Input
+                          id="guestPhone"
+                          value={guestClient.phone}
+                          onChange={(e) => setGuestClient({...guestClient, phone: e.target.value})}
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="guestEmail">Email</Label>
+                        <Input
+                          id="guestEmail"
+                          type="email"
+                          value={guestClient.email}
+                          onChange={(e) => setGuestClient({...guestClient, email: e.target.value})}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <Label htmlFor="guestAddress">Adresse</Label>
+                      <Input
+                        id="guestAddress"
+                        value={guestClient.address}
+                        onChange={(e) => setGuestClient({...guestClient, address: e.target.value})}
+                      />
+                    </div>
                   </TabsContent>
                 </Tabs>
               </div>
@@ -772,12 +949,11 @@ export const OrderManagement = () => {
                           />
                         )}
                         <div className="text-center">
-                          <div className="font-medium text-sm mb-1">{piece.name}</div>
-                          <div className="text-xs text-gray-600">
-                            Repassage: €{piece.pressingPrice}
+                          <div className="font-medium text-sm mb-1">{piece.name}</div>                          <div className="text-xs text-gray-600">
+                            Repassage: {piece.pressingPrice.toFixed(2)} DH
                           </div>
                           <div className="text-xs text-gray-600">
-                            Nettoyage: €{piece.cleaningPressingPrice}
+                            Nettoyage: {piece.cleaningPressingPrice.toFixed(2)} DH
                           </div>
                         </div>
                       </div>
@@ -838,13 +1014,13 @@ export const OrderManagement = () => {
                       <div className="flex-1">
                         <h4 className="font-medium text-sm mb-1">
                           {pieces.find(p => p.id === selectedPieceId)?.name}
-                        </h4>
-                        <div className="text-sm text-gray-600">                          <div>Repassage: €{pieces.find(p => p.id === selectedPieceId)?.pressingPrice}</div>
-                          <div>Nettoyage + Repassage: €{pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice}</div>
-                        </div>
-                        <div className="text-sm font-medium text-blue-600 mt-1">
-                          Service sélectionné: €{selectedServiceType === 'pressing'                            ? pieces.find(p => p.id === selectedPieceId)?.pressingPrice
-                            : pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice}
+                        </h4>                        <div className="text-sm text-gray-600">
+                          <div>Repassage: {pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)} DH</div>
+                          <div>Nettoyage + Repassage: {pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH</div>
+                        </div>                        <div className="text-sm font-medium text-blue-600 mt-1">
+                          Service sélectionné: {selectedServiceType === 'pressing'
+                            ? pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)
+                            : pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH
                           par pièce
                         </div>
                       </div>
@@ -870,9 +1046,8 @@ export const OrderManagement = () => {
                               />
                             )}
                             <div className="flex-1">
-                              <div className="font-medium">{piece.pieceName}</div>
-                              <div className="text-sm text-gray-600">
-                                {getServiceLabel(piece.serviceType)} - €{piece.unitPrice} x {piece.quantity}
+                              <div className="font-medium">{piece.pieceName}</div>                              <div className="text-sm text-gray-600">
+                                {getServiceLabel(piece.serviceType)} - {piece.unitPrice.toFixed(2)} DH x {piece.quantity}
                               </div>
                             </div>
                           </div>
@@ -894,9 +1069,8 @@ export const OrderManagement = () => {
                               >
                                 <Plus className="w-3 h-3" />
                               </Button>
-                            </div>
-                            <div className="font-medium min-w-[4rem] text-right">
-                              €{piece.totalPrice.toFixed(2)}
+                            </div>                            <div className="font-medium min-w-[4rem] text-right">
+                              {piece.totalPrice.toFixed(2)} DH
                             </div>
                             <Button
                               variant="outline"
@@ -960,14 +1134,15 @@ export const OrderManagement = () => {
 
               {/* Récapitulatif */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
-                <h4 className="font-medium">Récapitulatif de la commande</h4>
-                <div className="flex justify-between text-sm">
+                <h4 className="font-medium">Récapitulatif de la commande</h4>                <div className="flex justify-between text-sm">
                   <span>Client:</span>
                   <span>
                     {clientMode === 'search' && selectedClient 
                       ? (selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`)
                       : clientMode === 'create' 
                       ? (newClient.companyName || `${newClient.firstName} ${newClient.lastName}`)
+                      : clientMode === 'guest'
+                      ? `${guestClient.companyName || `${guestClient.firstName} ${guestClient.lastName}`} (Invité)`
                       : 'Non sélectionné'
                     }
                   </span>
@@ -986,22 +1161,21 @@ export const OrderManagement = () => {
                   <span className={isPaidInAdvance ? "text-green-600 font-medium" : "text-orange-600"}>
                     {isPaidInAdvance ? "Payé en avance" : "À payer à la récupération"}
                   </span>
-                </div>
-                <div className="flex justify-between font-medium pt-2 border-t">
+                </div>                <div className="flex justify-between font-medium pt-2 border-t">
                   <span>Total:</span>
-                  <span>€{calculateOrderTotal().toFixed(2)}</span>
+                  <span>{calculateOrderTotal().toFixed(2)} DH</span>
                 </div>
               </div>
               
               <div className="flex justify-end space-x-2 pt-4">
                 <Button variant="outline" onClick={() => handleDialogOpenChange(false)}>
                   Annuler
-                </Button>
-                <Button 
+                </Button>                <Button 
                   onClick={handleCreateOrder}
                   disabled={
                     (clientMode === 'search' && !selectedClient) ||
                     (clientMode === 'create' && (!newClient.firstName || !newClient.lastName)) ||
+                    (clientMode === 'guest' && (!guestClient.firstName || !guestClient.lastName || !guestClient.phone)) ||
                     orderPieces.length === 0
                   }
                 >
@@ -1117,10 +1291,9 @@ export const OrderManagement = () => {
                       <span className="text-gray-600">Prêt le:</span>
                       <div className="font-medium">{new Date(order.estimatedDate).toLocaleDateString('fr-FR')}</div>
                     </div>
-                    <div>
-                      <span className="text-gray-600">Montant:</span>
+                    <div>                      <span className="text-gray-600">Montant:</span>
                       <div className="font-medium flex items-center gap-2">
-                        €{order.totalAmount.toFixed(2)}
+                        {order.totalAmount.toFixed(2)} DH
                         {order.isExceptionalPrice && (
                           <Badge variant="outline" className="text-xs">
                             Prix exceptionnel

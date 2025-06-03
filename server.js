@@ -41,13 +41,11 @@ class DatabaseManager {
         cleaningPressingPrice REAL NOT NULL,
         imageUrl TEXT NOT NULL
       )
-    `);
-
-    // Table des commandes
+    `);    // Table des commandes
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS orders (
         id TEXT PRIMARY KEY,
-        clientId TEXT NOT NULL,
+        clientId TEXT,
         clientName TEXT NOT NULL,
         totalAmount REAL NOT NULL,
         status TEXT NOT NULL,
@@ -219,8 +217,53 @@ class DatabaseManager {
   // Méthodes pour les commandes
   getAllOrders() {
     return this.db.prepare('SELECT * FROM orders ORDER BY createdAt DESC').all();
-  }
-  insertOrder(order) {
+  }  insertOrder(order) {
+    // Détecter si c'est un client invité
+    const isGuestClient = order.clientId && order.clientId.startsWith('GUEST');
+    
+    if (isGuestClient) {
+      // Vérifier si le client temporaire existe déjà
+      const existingClient = this.db.prepare('SELECT id FROM clients WHERE id = ?').get(order.clientId);
+      
+      if (!existingClient) {
+        // Créer un client temporaire pour les clients invités
+        const tempClient = {
+          id: order.clientId,
+          firstName: order.clientName.split(' ')[0] || 'Client',
+          lastName: order.clientName.split(' ').slice(1).join(' ') || 'Invité',
+          phone: 'Non renseigné',
+          email: '',
+          address: '',
+          type: 'individual',
+          companyName: '',
+          createdAt: new Date().toISOString(),
+          isTemporary: 1
+        };
+        
+        console.log('🔍 Création client temporaire:', tempClient);
+        
+        // Insérer le client temporaire en base
+        const clientStmt = this.db.prepare(`
+          INSERT INTO clients (id, firstName, lastName, phone, email, address, type, companyName, createdAt, isTemporary, totalOrders, totalSpent)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `);
+        clientStmt.run(
+          tempClient.id, tempClient.firstName, tempClient.lastName, tempClient.phone,
+          tempClient.email, tempClient.address, tempClient.type, tempClient.companyName,
+          tempClient.createdAt, tempClient.isTemporary, 0, 0
+        );
+      } else {
+        console.log('🔍 Client temporaire existant trouvé:', order.clientId);
+      }
+    }
+    
+    console.log('🔍 Insertion de commande:', {
+      orderId: order.id,
+      clientId: order.clientId,
+      isGuestClient: isGuestClient,
+      clientName: order.clientName
+    });
+
     const stmt = this.db.prepare(`
       INSERT INTO orders (id, clientId, clientName, totalAmount, status, paymentStatus, createdAt, estimatedDate, isExceptionalPrice)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)

@@ -12,11 +12,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Separator } from "@/components/ui/separator";
 import { 
   Building2, 
-  Plus, 
-  Search, 
+  Plus,   Search, 
   FileText, 
   Calendar,
-  Euro,
+  Coins,
   Clock,
   AlertTriangle,  CheckCircle,
   TrendingUp,
@@ -405,9 +404,8 @@ export const ProfessionalDashboard = () => {
             <CardTitle className="text-sm font-medium">Impayés</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">
-              €{calculateTotalOutstanding().toFixed(2)}
+          <CardContent>            <div className="text-2xl font-bold text-red-600">
+              {calculateTotalOutstanding().toFixed(2)} DH
             </div>
             <p className="text-xs text-muted-foreground">
               {getOverdueOrders().length} factures en retard
@@ -420,9 +418,8 @@ export const ProfessionalDashboard = () => {
             <CardTitle className="text-sm font-medium">CA Professionnel</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">
-              €{professionalClients.reduce((total, client) => total + client.totalSpent, 0).toFixed(2)}
+          <CardContent>            <div className="text-2xl font-bold">
+              {professionalClients.reduce((total, client) => total + client.totalSpent, 0).toFixed(2)} DH
             </div>
             <p className="text-xs text-muted-foreground">Total cumulé</p>
           </CardContent>
@@ -442,10 +439,9 @@ export const ProfessionalDashboard = () => {
               <Card key={client.id} className="hover:shadow-md transition-shadow">
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">{client.companyName}</CardTitle>
-                    {client.outstandingAmount > 0 && (
+                    <CardTitle className="text-lg">{client.companyName}</CardTitle>                    {client.outstandingAmount > 0 && (
                       <Badge variant="destructive">
-                        €{client.outstandingAmount.toFixed(2)} dû
+                        {client.outstandingAmount.toFixed(2)} DH dû
                       </Badge>
                     )}
                   </div>
@@ -469,10 +465,9 @@ export const ProfessionalDashboard = () => {
                   </div>
                   
                   <Separator />
-                  
-                  <div className="flex justify-between text-sm">
+                    <div className="flex justify-between text-sm">
                     <span><strong>{client.totalOrders}</strong> commandes</span>
-                    <span><strong>€{client.totalSpent.toFixed(2)}</strong> CA total</span>
+                    <span><strong>{client.totalSpent.toFixed(2)} DH</strong> CA total</span>
                   </div>
                   
                   <Button variant="outline" className="w-full">
@@ -524,10 +519,9 @@ export const ProfessionalDashboard = () => {
                         </div>
                       </div>
                       
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
-                        <div>
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">                        <div>
                           <span className="text-gray-600">Montant:</span>
-                          <div className="font-medium">€{order.totalAmount.toFixed(2)}</div>
+                          <div className="font-medium">{order.totalAmount.toFixed(2)} DH</div>
                         </div>
                         <div>
                           <span className="text-gray-600">Livraison:</span>

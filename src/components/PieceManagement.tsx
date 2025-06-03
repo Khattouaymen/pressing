@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit3, Trash2, Shirt, Euro } from "lucide-react";
+import { Plus, Search, Edit3, Trash2, Shirt, Coins } from "lucide-react";
 import { usePieces, Piece } from '@/hooks/useApiDatabase';
 
 export const PieceManagement = () => {
@@ -193,7 +193,7 @@ export const PieceManagement = () => {
         
         <div className="grid grid-cols-2 gap-4">
           <div>
-            <Label htmlFor="pressingPrice">Prix Repassage (€)</Label>
+            <Label htmlFor="pressingPrice">Prix Repassage (DH)</Label>
             <Input
               id="pressingPrice"
               type="number"
@@ -204,7 +204,7 @@ export const PieceManagement = () => {
             />
           </div>
           <div>
-            <Label htmlFor="cleaningPressingPrice">Prix Nettoyage + Repassage (€)</Label>
+            <Label htmlFor="cleaningPressingPrice">Prix Nettoyage + Repassage (DH)</Label>
             <Input
               id="cleaningPressingPrice"
               type="number"
@@ -320,12 +320,11 @@ export const PieceManagement = () => {
                 <Shirt className="h-4 w-4 text-muted-foreground" />
               </CardHeader>
               <CardContent>
-                <div className="text-2xl font-bold">{categoryPieces.length}</div>
-                <p className="text-xs text-muted-foreground">
-                  Prix moyen: €{categoryPieces.length > 0 ? 
+                <div className="text-2xl font-bold">{categoryPieces.length}</div>                <p className="text-xs text-muted-foreground">
+                  Prix moyen: {categoryPieces.length > 0 ? 
                     (categoryPieces.reduce((sum, p) => sum + p.pressingPrice, 0) / categoryPieces.length).toFixed(2) : 
                     '0.00'
-                  }
+                  } DH
                 </p>
               </CardContent>
             </Card>
@@ -364,16 +363,14 @@ export const PieceManagement = () => {
             <CardContent className="space-y-3">
               <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Repassage:</span>
-                  <span className="font-medium flex items-center">
-                    <Euro className="w-3 h-3 mr-1" />
+                  <span className="text-gray-600">Repassage:</span>                  <span className="font-medium flex items-center">
+                    <Coins className="w-3 h-3 mr-1" />
                     {piece.pressingPrice.toFixed(2)}
                   </span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Nettoyage + Repassage:</span>
-                  <span className="font-medium flex items-center">
-                    <Euro className="w-3 h-3 mr-1" />
+                  <span className="text-gray-600">Nettoyage + Repassage:</span>                  <span className="font-medium flex items-center">
+                    <Coins className="w-3 h-3 mr-1" />
                     {piece.cleaningPressingPrice.toFixed(2)}
                   </span>
                 </div>

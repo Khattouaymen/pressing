@@ -10,7 +10,7 @@ import {
   ClipboardList, 
   TrendingUp, 
   Clock, 
-  Euro,
+  Coins,
   Package,
   CheckCircle,
   AlertCircle,
@@ -112,13 +112,12 @@ const Index = () => {
                 </CardContent>
               </Card>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Card>                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-sm font-medium">Chiffre d'affaires</CardTitle>
-                  <Euro className="h-4 w-4 text-muted-foreground" />
+                  <Coins className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">€{stats.revenue}</div>
+                  <div className="text-2xl font-bold">{stats.revenue} DH</div>
                   <p className="text-xs text-muted-foreground">Aujourd'hui</p>
                 </CardContent>
               </Card>
@@ -155,10 +154,9 @@ const Index = () => {
                           <Badge className={getStatusColor(order.status)}>
                             {order.status}
                           </Badge>
-                        </div>
-                      </div>
+                        </div>                      </div>
                       <div className="text-right">
-                        <p className="font-medium">€{order.amount}</p>
+                        <p className="font-medium">{order.amount} DH</p>
                       </div>
                     </div>
                   ))}
