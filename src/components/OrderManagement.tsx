@@ -42,10 +42,10 @@ export const OrderManagement = () => {
     type: 'individual' as 'individual' | 'professional',
     companyName: ''
   });
-  
-  const [orderPieces, setOrderPieces] = useState<OrderPiece[]>([]);
+    const [orderPieces, setOrderPieces] = useState<OrderPiece[]>([]);
   const [selectedPieceId, setSelectedPieceId] = useState<string>('');
   const [selectedServiceType, setSelectedServiceType] = useState<'pressing' | 'cleaning-pressing'>('pressing');  const [pieceQuantity, setPieceQuantity] = useState(1);
+  const [pieceSearchTerm, setPieceSearchTerm] = useState("");
   const [isExceptionalPrice, setIsExceptionalPrice] = useState(false);
   const [exceptionalTotal, setExceptionalTotal] = useState(0);
   const [isPaidInAdvance, setIsPaidInAdvance] = useState(false);
@@ -586,11 +586,11 @@ export const OrderManagement = () => {
       address: '',
       type: 'individual',
       companyName: ''
-    });
-    setOrderPieces([]);
+    });    setOrderPieces([]);
     setSelectedPieceId('');
     setSelectedServiceType('pressing');
     setPieceQuantity(1);
+    setPieceSearchTerm("");
     setIsExceptionalPrice(false);
     setExceptionalTotal(0);
   };
@@ -918,113 +918,179 @@ export const OrderManagement = () => {
                 </Tabs>
               </div>
 
-              <Separator />
-
-              {/* Sélection des pièces avec images */}
-              <div className="space-y-4">
-                <Label className="text-base font-medium">Sélection des pièces</Label>
+              <Separator />              {/* Sélection des pièces avec images améliorée */}
+              <div className="space-y-6">
+                <div className="flex items-center justify-between">
+                  <Label className="text-base font-medium">Sélection des pièces</Label>
+                  <div className="flex items-center gap-2">
+                    <Search className="w-4 h-4 text-gray-400" />
+                    <Input
+                      placeholder="Rechercher une pièce..."
+                      value={pieceSearchTerm}
+                      onChange={(e) => setPieceSearchTerm(e.target.value)}
+                      className="w-64"
+                    />
+                  </div>
+                </div>
                 
                 <div className="space-y-4">
-                  {/* Grille de sélection visuelle des pièces */}
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-60 overflow-y-auto border rounded-lg p-3">
-                    {pieces.map((piece) => (
+                  {/* Grille de sélection visuelle des pièces - Version améliorée */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto border rounded-lg p-4">
+                    {pieces
+                      .filter(piece => 
+                        piece.name.toLowerCase().includes(pieceSearchTerm.toLowerCase()) ||
+                        piece.category?.toLowerCase().includes(pieceSearchTerm.toLowerCase())
+                      )
+                      .map((piece) => (
                       <div
                         key={piece.id}
-                        className={`cursor-pointer border rounded-lg p-3 transition-all hover:shadow-md ${
+                        className={`cursor-pointer border rounded-lg p-4 transition-all hover:shadow-lg hover:scale-105 ${
                           selectedPieceId === piece.id 
-                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200' 
-                            : 'border-gray-200 hover:border-gray-300'
+                            ? 'border-blue-500 bg-blue-50 ring-2 ring-blue-200 shadow-lg' 
+                            : 'border-gray-200 hover:border-gray-400 bg-white'
                         }`}
                         onClick={() => setSelectedPieceId(piece.id)}
                       >
-                        {piece.imageUrl && (
-                          <img 
-                            src={piece.imageUrl} 
-                            alt={piece.name}
-                            className="w-full h-16 object-cover rounded-md mb-2"
-                            onError={(e) => {
-                              e.currentTarget.style.display = 'none';
-                            }}
-                          />
-                        )}
-                        <div className="text-center">
-                          <div className="font-medium text-sm mb-1">{piece.name}</div>                          <div className="text-xs text-gray-600">
-                            Repassage: {`${piece.pressingPrice.toFixed(2)} DH`}
-                          </div>
-                          <div className="text-xs text-gray-600">
-                            Nettoyage: {`${piece.cleaningPressingPrice.toFixed(2)} DH`}
+                        <div className="flex flex-col h-full">
+                          {piece.imageUrl && (
+                            <div className="relative mb-3">
+                              <img 
+                                src={piece.imageUrl} 
+                                alt={piece.name}
+                                className="w-full h-24 object-cover rounded-md"
+                                onError={(e) => {
+                                  e.currentTarget.style.display = 'none';
+                                }}
+                              />
+                              {selectedPieceId === piece.id && (
+                                <div className="absolute top-2 right-2 bg-blue-500 text-white rounded-full p-1">
+                                  <CheckCircle className="w-4 h-4" />
+                                </div>
+                              )}
+                            </div>
+                          )}
+                          <div className="flex-1">
+                            <div className="font-medium text-base mb-2 text-center">{piece.name}</div>
+                            <div className="space-y-1">
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Repassage:</span>
+                                <span className="font-medium text-green-600">{`${piece.pressingPrice.toFixed(2)} DH`}</span>
+                              </div>
+                              <div className="flex justify-between items-center text-sm">
+                                <span className="text-gray-600">Nettoyage:</span>
+                                <span className="font-medium text-blue-600">{`${piece.cleaningPressingPrice.toFixed(2)} DH`}</span>
+                              </div>
+                            </div>
+                            {piece.category && (
+                              <div className="mt-2">
+                                <Badge variant="secondary" className="text-xs">
+                                  {piece.category}
+                                </Badge>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    ))}                  </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <Label htmlFor="serviceType">Service</Label>
-                      <Select value={selectedServiceType} onValueChange={(value: any) => setSelectedServiceType(value)}>
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="pressing">Repassage</SelectItem>
-                          <SelectItem value="cleaning-pressing">Nettoyage + Repassage</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    
-                    <div>
-                      <Label htmlFor="quantity">Quantité</Label>
-                      <Input
-                        id="quantity"
-                        type="number"
-                        min="1"
-                        value={pieceQuantity}
-                        onChange={(e) => setPieceQuantity(parseInt(e.target.value) || 1)}
-                      />
-                    </div>
-                    
-                    <div className="flex items-end">
-                      <Button 
-                        onClick={addPieceToOrder}
-                        disabled={!selectedPieceId}
-                        className="w-full"
-                      >
-                        <Plus className="w-4 h-4 mr-2" />
-                        Ajouter
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Aperçu de la pièce sélectionnée avec image */}
-                {selectedPieceId && (
-                  <div className="bg-gray-50 p-4 rounded-lg border">
-                    <div className="flex items-center gap-4">
-                      {pieces.find(p => p.id === selectedPieceId)?.imageUrl && (
-                        <img                          src={pieces.find(p => p.id === selectedPieceId)?.imageUrl}
-                          alt={pieces.find(p => p.id === selectedPieceId)?.name}
-                          className="w-16 h-16 object-cover rounded-md border"
-                          onError={(e) => {
-                            e.currentTarget.style.display = 'none';
-                          }}
-                        />
-                      )}
-                      <div className="flex-1">
-                        <h4 className="font-medium text-sm mb-1">
-                          {pieces.find(p => p.id === selectedPieceId)?.name}
-                        </h4>                        <div className="text-sm text-gray-600">
-                          <div>Repassage: {`${pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)} DH`}</div>
-                          <div>Nettoyage + Repassage: {`${pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH`}</div>
-                        </div>                        <div className="text-sm font-medium text-blue-600 mt-1">                          Service sélectionné: {`${selectedServiceType === 'pressing'
-                            ? pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)
-                            : pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH`}
-                          par pièce
+                  {/* Contrôles améliorés pour ajouter une pièce */}
+                  {selectedPieceId && (
+                    <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                      <h4 className="font-medium text-blue-900 mb-3 flex items-center gap-2">
+                        <Package className="w-4 h-4" />
+                        Ajouter cette pièce à la commande
+                      </h4>
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                        <div>
+                          <Label htmlFor="serviceType" className="text-sm font-medium text-blue-900">Type de service</Label>
+                          <Select value={selectedServiceType} onValueChange={(value: any) => setSelectedServiceType(value)}>
+                            <SelectTrigger className="bg-white">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="pressing">
+                                <div className="flex items-center justify-between w-full">
+                                  <span>Repassage uniquement</span>
+                                  <span className="ml-4 text-green-600 font-medium">
+                                    {`${pieces.find(p => p.id === selectedPieceId)?.pressingPrice.toFixed(2)} DH`}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                              <SelectItem value="cleaning-pressing">
+                                <div className="flex items-center justify-between w-full">
+                                  <span>Nettoyage + Repassage</span>
+                                  <span className="ml-4 text-blue-600 font-medium">
+                                    {`${pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice.toFixed(2)} DH`}
+                                  </span>
+                                </div>
+                              </SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div>
+                          <Label htmlFor="quantity" className="text-sm font-medium text-blue-900">Quantité</Label>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPieceQuantity(Math.max(1, pieceQuantity - 1))}
+                              className="px-2"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </Button>
+                            <Input
+                              id="quantity"
+                              type="number"
+                              min="1"
+                              value={pieceQuantity}
+                              onChange={(e) => setPieceQuantity(parseInt(e.target.value) || 1)}
+                              className="text-center bg-white"
+                            />
+                            <Button
+                              type="button"
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setPieceQuantity(pieceQuantity + 1)}
+                              className="px-2"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </Button>
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Label className="text-sm font-medium text-blue-900">Prix total</Label>
+                          <div className="bg-white border rounded-md px-3 py-2 text-lg font-bold text-blue-600">
+                            {`${((selectedServiceType === 'pressing' 
+                              ? pieces.find(p => p.id === selectedPieceId)?.pressingPrice || 0
+                              : pieces.find(p => p.id === selectedPieceId)?.cleaningPressingPrice || 0
+                            ) * pieceQuantity).toFixed(2)} DH`}
+                          </div>
+                        </div>
+                        
+                        <div>
+                          <Button 
+                            onClick={addPieceToOrder}
+                            disabled={!selectedPieceId}
+                            className="w-full bg-blue-600 hover:bg-blue-700"
+                            size="lg"
+                          >
+                            <Plus className="w-4 h-4 mr-2" />
+                            Ajouter à la commande
+                          </Button>
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
+                  
+                  {!selectedPieceId && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Package className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>Sélectionnez une pièce ci-dessus pour l'ajouter à la commande</p>
+                    </div>
+                  )}                </div>
 
                 {/* Liste des pièces ajoutées avec images */}
                 {orderPieces.length > 0 && (
