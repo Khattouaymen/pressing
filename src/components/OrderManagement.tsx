@@ -37,10 +37,10 @@ export const OrderManagement = () => {
   
   const [orderPieces, setOrderPieces] = useState<OrderPiece[]>([]);
   const [selectedPieceId, setSelectedPieceId] = useState<string>('');
-  const [selectedServiceType, setSelectedServiceType] = useState<'pressing' | 'cleaning-pressing'>('pressing');
-  const [pieceQuantity, setPieceQuantity] = useState(1);
+  const [selectedServiceType, setSelectedServiceType] = useState<'pressing' | 'cleaning-pressing'>('pressing');  const [pieceQuantity, setPieceQuantity] = useState(1);
   const [isExceptionalPrice, setIsExceptionalPrice] = useState(false);
   const [exceptionalTotal, setExceptionalTotal] = useState(0);
+  const [isPaidInAdvance, setIsPaidInAdvance] = useState(false);
   // Filter clients for search
   const searchResults = clients.filter(client =>
     clientSearchTerm && (
@@ -146,16 +146,14 @@ export const OrderManagement = () => {
     try {
       const totalAmount = isExceptionalPrice 
         ? exceptionalTotal 
-        : orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0);
-
-      const orderData: Order = {
+        : orderPieces.reduce((sum, piece) => sum + piece.totalPrice, 0);      const orderData: Order = {
         id: `PR${Date.now()}`, // Génération d'un ID simple
         clientId: selectedClient.id,
         clientName: `${selectedClient.firstName} ${selectedClient.lastName}`,
         pieces: orderPieces,
         totalAmount,
         status: 'received',
-        paymentStatus: 'pending',
+        paymentStatus: isPaidInAdvance ? 'paid' : 'pending',
         createdAt: new Date().toISOString(),
         estimatedDate: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(), // 48h plus tard
         isExceptionalPrice,
@@ -167,14 +165,14 @@ export const OrderManagement = () => {
       
       const result = await addOrder(orderData);
       console.log('✅ Commande créée avec succès:', result);
-      
-      // Reset du formulaire
+        // Reset du formulaire
       setIsCreatingOrder(false);
       setSelectedClient(null);
       setOrderPieces([]);
       setClientSearchTerm('');
       setIsExceptionalPrice(false);
       setExceptionalTotal(0);
+      setIsPaidInAdvance(false);
       setClientMode('search');
       
       toast.success(`Commande ${orderData.id} créée avec succès pour ${selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`}`);
@@ -183,15 +181,25 @@ export const OrderManagement = () => {
       console.error('📊 Stack trace:', error.stack);
       toast.error(`Erreur lors de la création de la commande: ${error.message || error}`);
     }
-  };// Mise à jour du statut d'une commande
+  };  // Mise à jour du statut d'une commande
   const handleUpdateOrderStatus = async (orderId: string, newStatus: Order['status']) => {
     try {
       const orderToUpdate = orders.find(order => order.id === orderId);
       if (!orderToUpdate) {
         throw new Error('Commande non trouvée');
       }
-      await updateOrder({ ...orderToUpdate, status: newStatus });
-      toast.success(`Statut de la commande ${orderId} mis à jour`);
+
+      // Logique automatique de paiement lors de la récupération
+      let updatedOrder = { ...orderToUpdate, status: newStatus };
+      
+      if (newStatus === 'delivered' && orderToUpdate.paymentStatus === 'pending') {
+        updatedOrder.paymentStatus = 'paid';
+        toast.success(`Commande ${orderId} récupérée et marquée comme payée automatiquement`);
+      } else {
+        toast.success(`Statut de la commande ${orderId} mis à jour`);
+      }
+
+      await updateOrder(updatedOrder);
     } catch (error) {
       console.error('Erreur lors de la mise à jour de la commande:', error);
       toast.error('Erreur lors de la mise à jour du statut');
@@ -212,7 +220,6 @@ export const OrderManagement = () => {
       toast.error('Erreur lors de la mise à jour du paiement');
     }
   };
-
   // Gestion de l'ouverture/fermeture du dialog
   const handleDialogOpenChange = (open: boolean) => {
     setIsCreatingOrder(open);
@@ -223,6 +230,7 @@ export const OrderManagement = () => {
       setClientSearchTerm('');
       setIsExceptionalPrice(false);
       setExceptionalTotal(0);
+      setIsPaidInAdvance(false);
       setClientMode('search');
       setNewClient({
         firstName: '',
@@ -718,8 +726,7 @@ export const OrderManagement = () => {
                     />
                     <Label htmlFor="exceptionalPrice">Appliquer un prix exceptionnel</Label>
                   </div>
-                  
-                  {isExceptionalPrice && (
+                    {isExceptionalPrice && (
                     <div>
                       <Label htmlFor="exceptionalAmount">Montant total exceptionnel</Label>
                       <Input
@@ -730,6 +737,26 @@ export const OrderManagement = () => {
                         value={exceptionalTotal}
                         onChange={(e) => setExceptionalTotal(parseFloat(e.target.value) || 0)}
                       />
+                    </div>
+                  )}
+
+                  {/* Option de paiement en avance */}
+                  <div className="flex items-center space-x-2">
+                    <Checkbox
+                      id="paidInAdvance"
+                      checked={isPaidInAdvance}
+                      onCheckedChange={(checked) => setIsPaidInAdvance(!!checked)}
+                    />
+                    <Label htmlFor="paidInAdvance">Payé en avance</Label>
+                  </div>
+                  {isPaidInAdvance && (
+                    <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+                      ✅ Cette commande sera marquée comme payée dès sa création
+                    </div>
+                  )}
+                  {!isPaidInAdvance && (
+                    <div className="text-sm text-blue-600 bg-blue-50 p-2 rounded">
+                      💡 Le paiement sera automatiquement marqué comme effectué lors de la récupération
                     </div>
                   )}
                 </div>
@@ -754,13 +781,18 @@ export const OrderManagement = () => {
                 <div className="flex justify-between text-sm">
                   <span>Nombre de pièces:</span>
                   <span>{orderPieces.reduce((total, piece) => total + piece.quantity, 0)}</span>
-                </div>
-                {isExceptionalPrice && (
+                </div>                {isExceptionalPrice && (
                   <div className="flex justify-between text-sm text-orange-600">
                     <span>Prix exceptionnel appliqué:</span>
                     <span>Oui</span>
                   </div>
                 )}
+                <div className="flex justify-between text-sm">
+                  <span>Statut de paiement:</span>
+                  <span className={isPaidInAdvance ? "text-green-600 font-medium" : "text-orange-600"}>
+                    {isPaidInAdvance ? "Payé en avance" : "À payer à la récupération"}
+                  </span>
+                </div>
                 <div className="flex justify-between font-medium pt-2 border-t">
                   <span>Total:</span>
                   <span>€{calculateOrderTotal().toFixed(2)}</span>
@@ -842,10 +874,19 @@ export const OrderManagement = () => {
                     <h3 className="font-bold text-lg">{order.id}</h3>
                     <Badge className={getStatusColor(order.status)}>
                       {getStatusLabel(order.status)}
-                    </Badge>
-                    {order.paymentStatus === 'pending' && (
+                    </Badge>                    {order.paymentStatus === 'pending' && (
                       <Badge variant="outline" className="text-orange-600 border-orange-200">
                         Paiement en attente
+                      </Badge>
+                    )}
+                    {order.paymentStatus === 'paid' && (
+                      <Badge variant="outline" className="text-green-600 border-green-200">
+                        Payé
+                      </Badge>
+                    )}
+                    {order.paymentStatus === 'overdue' && (
+                      <Badge variant="outline" className="text-red-600 border-red-200">
+                        En retard
                       </Badge>
                     )}
                   </div>
