@@ -147,18 +147,15 @@ export const OrderManagement = () => {
       console.log('❌ Erreur: Aucun client sélectionné');
       toast.error('Veuillez sélectionner un client');
       return;
-    }
-
-    if (clientMode === 'create' && (!newClient.firstName || !newClient.lastName || !newClient.phone)) {
+    }    if (clientMode === 'create' && (!newClient.firstName || !newClient.lastName || !newClient.phone)) {
       console.log('❌ Erreur: Informations client incomplètes');
       toast.error('Veuillez remplir les champs obligatoires du nouveau client');
       return;
     }
 
-    if (clientMode === 'guest' && (!guestClient.firstName || !guestClient.lastName || !guestClient.phone)) {
-      console.log('❌ Erreur: Informations client invité incomplètes');
-      toast.error('Veuillez remplir les champs obligatoires du client');
-      return;
+    // Mode guest - aucune validation requise, génération automatique
+    if (clientMode === 'guest') {
+      console.log('ℹ️ Mode Client Invité - Génération automatique des informations');
     }
 
     if (orderPieces.length === 0) {
@@ -208,15 +205,26 @@ export const OrderManagement = () => {
         const createdClient = await addClient(newClientData);
         clientData = createdClient;
         clientName = `${newClient.firstName} ${newClient.lastName}`;      } else {
-        // Mode guest - utiliser les informations temporaires
+        // Mode guest - générer automatiquement les informations du client invité
         // Générer le prochain numéro de client invité séquentiel
         let nextGuestNumber = 1;
         while (clients.some(client => client.id === `GUEST${nextGuestNumber}`)) {
           nextGuestNumber++;
         }
         
-        clientData = { id: `GUEST${nextGuestNumber}`, ...guestClient };
-        clientName = `${guestClient.firstName} ${guestClient.lastName}`;
+        // Utiliser les informations fournies ou générer automatiquement
+        const guestData = {
+          firstName: guestClient.firstName || 'Client',
+          lastName: guestClient.lastName || `Invité ${nextGuestNumber}`,
+          phone: guestClient.phone || 'Non renseigné',
+          email: guestClient.email || '',
+          address: guestClient.address || '',
+          type: 'individual' as const,
+          companyName: ''
+        };
+        
+        clientData = { id: `GUEST${nextGuestNumber}`, ...guestData };
+        clientName = `${guestData.firstName} ${guestData.lastName}`;
       }const orderData: Order = {
         id: `PR${nextOrderNumber}`, // Génération d'un ID séquentiel commençant par 1
         clientId: clientData.id,
@@ -836,102 +844,22 @@ export const OrderManagement = () => {
                       Créer ce client
                     </Button>
                   </TabsContent>
-                  
-                  <TabsContent value="guest" className="space-y-4 mt-4">
-                    <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
-                      <div className="flex items-center gap-2 text-blue-800 mb-2">
-                        <UserCheck className="w-4 h-4" />
-                        <span className="font-medium">Client Invité</span>
+                    <TabsContent value="guest" className="space-y-4 mt-4">
+                    <div className="text-center py-8 bg-blue-50 rounded-lg border-2 border-blue-200">
+                      <div className="flex items-center justify-center mb-4">
+                        <UserCheck className="w-12 h-12 text-blue-600" />
                       </div>
-                      <p className="text-sm text-blue-700">
-                        Les informations du client invité ne seront pas sauvegardées dans la base de données. 
-                        Elles ne serviront que pour cette commande.
-                      </p>
-                    </div>
-                    
-                    <Tabs value={guestClient.type} onValueChange={(value: any) => setGuestClient({...guestClient, type: value})}>
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="individual">Particulier</TabsTrigger>
-                        <TabsTrigger value="professional">Professionnel</TabsTrigger>
-                      </TabsList>
-                      
-                      <TabsContent value="individual" className="space-y-3">
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label htmlFor="guestFirstName">Prénom</Label>
-                            <Input
-                              id="guestFirstName"
-                              value={guestClient.firstName}
-                              onChange={(e) => setGuestClient({...guestClient, firstName: e.target.value})}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="guestLastName">Nom</Label>
-                            <Input
-                              id="guestLastName"
-                              value={guestClient.lastName}
-                              onChange={(e) => setGuestClient({...guestClient, lastName: e.target.value})}
-                            />
-                          </div>
-                        </div>
-                      </TabsContent>
-                      
-                      <TabsContent value="professional" className="space-y-3">
-                        <div>
-                          <Label htmlFor="guestCompanyName">Raison sociale</Label>
-                          <Input
-                            id="guestCompanyName"
-                            value={guestClient.companyName}
-                            onChange={(e) => setGuestClient({...guestClient, companyName: e.target.value})}
-                          />
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                          <div>
-                            <Label htmlFor="guestFirstNamePro">Prénom contact</Label>
-                            <Input
-                              id="guestFirstNamePro"
-                              value={guestClient.firstName}
-                              onChange={(e) => setGuestClient({...guestClient, firstName: e.target.value})}
-                            />
-                          </div>
-                          <div>
-                            <Label htmlFor="guestLastNamePro">Nom contact</Label>
-                            <Input
-                              id="guestLastNamePro"
-                              value={guestClient.lastName}
-                              onChange={(e) => setGuestClient({...guestClient, lastName: e.target.value})}
-                            />
-                          </div>
-                        </div>
-                      </TabsContent>
-                    </Tabs>
-                    
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <Label htmlFor="guestPhone">Téléphone</Label>
-                        <Input
-                          id="guestPhone"
-                          value={guestClient.phone}
-                          onChange={(e) => setGuestClient({...guestClient, phone: e.target.value})}
-                        />
+                      <div className="space-y-2">
+                        <h3 className="text-lg font-semibold text-blue-900">Mode Client Invité</h3>
+                        <p className="text-blue-700 max-w-md mx-auto">
+                          La commande sera créée pour un client invité généré automatiquement. 
+                          Aucune information personnelle ne sera demandée ni sauvegardée.
+                        </p>
                       </div>
-                      <div>
-                        <Label htmlFor="guestEmail">Email</Label>
-                        <Input
-                          id="guestEmail"
-                          type="email"
-                          value={guestClient.email}
-                          onChange={(e) => setGuestClient({...guestClient, email: e.target.value})}
-                        />
+                      <div className="mt-6 p-4 bg-white rounded-lg border border-blue-200">
+                        <p className="text-sm text-gray-600 mb-2">Le client sera automatiquement nommé :</p>
+                        <p className="font-medium text-gray-800">"Client Invité [Numéro]"</p>
                       </div>
-                    </div>
-                    <div>
-                      <Label htmlFor="guestAddress">Adresse</Label>
-                      <Input
-                        id="guestAddress"
-                        value={guestClient.address}
-                        onChange={(e) => setGuestClient({...guestClient, address: e.target.value})}
-                      />
                     </div>
                   </TabsContent>
                 </Tabs>
@@ -1218,14 +1146,13 @@ export const OrderManagement = () => {
               {/* Récapitulatif */}
               <div className="bg-gray-50 p-4 rounded-lg space-y-2">
                 <h4 className="font-medium">Récapitulatif de la commande</h4>                <div className="flex justify-between text-sm">
-                  <span>Client:</span>
-                  <span>
+                  <span>Client:</span>                  <span>
                     {clientMode === 'search' && selectedClient 
                       ? (selectedClient.companyName || `${selectedClient.firstName} ${selectedClient.lastName}`)
                       : clientMode === 'create' 
                       ? (newClient.companyName || `${newClient.firstName} ${newClient.lastName}`)
                       : clientMode === 'guest'
-                      ? `${guestClient.companyName || `${guestClient.firstName} ${guestClient.lastName}`} (Invité)`
+                      ? 'Client Invité (généré automatiquement)'
                       : 'Non sélectionné'
                     }
                   </span>
@@ -1258,7 +1185,6 @@ export const OrderManagement = () => {
                   disabled={
                     (clientMode === 'search' && !selectedClient) ||
                     (clientMode === 'create' && (!newClient.firstName || !newClient.lastName)) ||
-                    (clientMode === 'guest' && (!guestClient.firstName || !guestClient.lastName || !guestClient.phone)) ||
                     orderPieces.length === 0
                   }
                 >

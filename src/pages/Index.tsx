@@ -30,14 +30,23 @@ const Index = () => {
 
   // Fetch dynamic data for dashboard
   const { stats, recentOrders, loading } = useDashboardStats();
-
   const getStatusColor = (status: string) => {
     switch (status) {
-      case "Reçu": return "bg-blue-100 text-blue-800";
-      case "En traitement": return "bg-yellow-100 text-yellow-800";
-      case "Prêt": return "bg-green-100 text-green-800";
-      case "Récupéré": return "bg-gray-100 text-gray-800";
+      case "received": return "bg-blue-100 text-blue-800";
+      case "processing": return "bg-yellow-100 text-yellow-800";
+      case "ready": return "bg-green-100 text-green-800";
+      case "delivered": return "bg-gray-100 text-gray-800";
       default: return "bg-gray-100 text-gray-800";
+    }
+  };
+
+  const getStatusLabel = (status: string) => {
+    switch (status) {
+      case "received": return "Reçu";
+      case "processing": return "En traitement";
+      case "ready": return "Prêt";
+      case "delivered": return "Récupéré";
+      default: return status;
     }
   };
 
@@ -139,27 +148,39 @@ const Index = () => {
               <CardHeader>
                 <CardTitle>Commandes récentes</CardTitle>
                 <CardDescription>Aperçu des dernières commandes reçues</CardDescription>
-              </CardHeader>
-              <CardContent>
+              </CardHeader>              <CardContent>
                 <div className="space-y-4">
-                  {recentOrders.map((order) => (
-                    <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
-                      <div className="flex items-center space-x-4">
-                        <div>
-                          <p className="font-medium">{order.id}</p>
-                          <p className="text-sm text-gray-600">{order.client}</p>
-                        </div>
-                        <div>
-                          <p className="text-sm">{order.service}</p>
-                          <Badge className={getStatusColor(order.status)}>
-                            {order.status}
-                          </Badge>
-                        </div>                      </div>
-                      <div className="text-right">
-                        <p className="font-medium">{order.amount} DH</p>
-                      </div>
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
+                      <p className="text-gray-500">Chargement des commandes...</p>
                     </div>
-                  ))}
+                  ) : recentOrders.length === 0 ? (
+                    <div className="text-center py-8 text-gray-500">
+                      <ClipboardList className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                      <p>Aucune commande récente</p>
+                    </div>
+                  ) : (
+                    recentOrders.map((order) => (
+                      <div key={order.id} className="flex items-center justify-between p-4 border rounded-lg">
+                        <div className="flex items-center space-x-4">
+                          <div>
+                            <p className="font-medium">{order.id}</p>
+                            <p className="text-sm text-gray-600">{order.clientName}</p>
+                          </div>
+                          <div>
+                            <p className="text-sm">Service pressing</p>
+                            <Badge className={getStatusColor(order.status)}>
+                              {getStatusLabel(order.status)}
+                            </Badge>
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium">{order.totalAmount?.toFixed(2)} DH</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
               </CardContent>
             </Card>

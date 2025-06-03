@@ -147,10 +147,26 @@ class DatabaseManager {
 
       profClients.forEach(client => {
         insertProfClient.run(...client);
-      });
-
-      console.log('Base de données SQLite initialisée avec les données de test');
+      });      console.log('Base de données SQLite initialisée avec les données de test');
     }
+  }
+
+  // Méthodes pour générer des IDs séquentiels
+  getNextClientId() {
+    const result = this.db.prepare('SELECT COUNT(*) as count FROM clients WHERE id LIKE "CLI%"').get();
+    return `CLI${result.count + 1}`;
+  }
+
+  getNextOrderId() {
+    const result = this.db.prepare('SELECT COUNT(*) as count FROM orders WHERE id LIKE "PR%"').get();
+    return `PR${result.count + 1}`;
+  }
+
+  getNextProfessionalClientId() {
+    const result = this.db.prepare('SELECT COUNT(*) as count FROM professional_clients WHERE id LIKE "PRO%"').get();
+    const existingCount = result.count;
+    // Commencer à PRO003 car PRO001 et PRO002 existent déjà
+    return `PRO${Math.max(existingCount + 1, 3)}`;
   }
 
   // Méthodes pour les clients
@@ -262,9 +278,7 @@ class DatabaseManager {
       clientId: order.clientId,
       isGuestClient: isGuestClient,
       clientName: order.clientName
-    });
-
-    const stmt = this.db.prepare(`
+    });    const stmt = this.db.prepare(`
       INSERT INTO orders (id, clientId, clientName, totalAmount, status, paymentStatus, createdAt, estimatedDate, isExceptionalPrice)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
@@ -273,6 +287,21 @@ class DatabaseManager {
       order.status, order.paymentStatus, order.createdAt, order.estimatedDate,
       order.isExceptionalPrice ? 1 : 0  // Convert boolean to integer
     );
+
+    // Mettre à jour les statistiques du client
+    if (order.clientId && !order.clientId.startsWith('GUEST')) {
+      const updateClientStmt = this.db.prepare(`
+        UPDATE clients 
+        SET totalOrders = totalOrders + 1, 
+            totalSpent = totalSpent + ? 
+        WHERE id = ?
+      `);
+      updateClientStmt.run(order.totalAmount, order.clientId);
+      console.log('🔍 Statistiques client mises à jour:', {
+        clientId: order.clientId,
+        newOrderAmount: order.totalAmount
+      });
+    }
   }
   updateOrder(order) {
     const stmt = this.db.prepare(`
@@ -284,6 +313,49 @@ class DatabaseManager {
       order.clientId, order.clientName, order.totalAmount, order.status,
       order.paymentStatus, order.estimatedDate, order.isExceptionalPrice ? 1 : 0, order.id
     );
+  }
+
+  // Fonction pour recalculer les statistiques des clients
+  recalculateClientStats() {
+    console.log('🔄 Recalcul des statistiques des clients...');
+    
+    // Recalculer pour les clients individuels
+    const clientStats = this.db.prepare(`
+      SELECT clientId, COUNT(*) as orderCount, SUM(totalAmount) as totalSpent
+      FROM orders 
+      WHERE clientId IS NOT NULL AND clientId != '' AND NOT clientId LIKE 'GUEST%'
+      GROUP BY clientId
+    `).all();
+
+    clientStats.forEach(stat => {
+      const updateStmt = this.db.prepare(`
+        UPDATE clients 
+        SET totalOrders = ?, totalSpent = ?
+        WHERE id = ?
+      `);
+      updateStmt.run(stat.orderCount, stat.totalSpent || 0, stat.clientId);
+      console.log(`✅ Client ${stat.clientId}: ${stat.orderCount} commandes, ${stat.totalSpent || 0} DH`);
+    });
+
+    // Recalculer pour les clients professionnels
+    const professionalStats = this.db.prepare(`
+      SELECT clientId, COUNT(*) as orderCount, SUM(totalAmount) as totalSpent
+      FROM professional_orders 
+      WHERE clientId IS NOT NULL AND clientId != ''
+      GROUP BY clientId
+    `).all();
+
+    professionalStats.forEach(stat => {
+      const updateStmt = this.db.prepare(`
+        UPDATE professional_clients 
+        SET totalOrders = ?, totalSpent = ?
+        WHERE id = ?
+      `);
+      updateStmt.run(stat.orderCount, stat.totalSpent || 0, stat.clientId);
+      console.log(`✅ Client Pro ${stat.clientId}: ${stat.orderCount} commandes, ${stat.totalSpent || 0} DH`);
+    });
+
+    console.log('✅ Recalcul des statistiques terminé');
   }
 
   deleteOrder(id) {
@@ -346,7 +418,6 @@ class DatabaseManager {
   getAllProfessionalOrders() {
     return this.db.prepare('SELECT * FROM professional_orders ORDER BY createdAt DESC').all();
   }
-
   insertProfessionalOrder(order) {
     const stmt = this.db.prepare(`
       INSERT INTO professional_orders (id, clientId, clientName, pieces, service, totalAmount, status, paymentStatus, createdAt, deliveryDate, dueDate, priority)
@@ -357,6 +428,21 @@ class DatabaseManager {
       order.totalAmount, order.status, order.paymentStatus, order.createdAt,
       order.deliveryDate, order.dueDate, order.priority
     );
+
+    // Mettre à jour les statistiques du client professionnel
+    if (order.clientId) {
+      const updateClientStmt = this.db.prepare(`
+        UPDATE professional_clients 
+        SET totalOrders = totalOrders + 1, 
+            totalSpent = totalSpent + ? 
+        WHERE id = ?
+      `);
+      updateClientStmt.run(order.totalAmount, order.clientId);
+      console.log('🔍 Statistiques client professionnel mises à jour:', {
+        clientId: order.clientId,
+        newOrderAmount: order.totalAmount
+      });
+    }
   }
 
   updateProfessionalOrder(order) {
@@ -393,6 +479,9 @@ app.use(express.json());
 // Initialiser la base de données
 const db = new DatabaseManager();
 
+// Recalculer les statistiques des clients au démarrage
+db.recalculateClientStats();
+
 // Routes pour les clients
 app.get('/api/clients', (req, res) => {
   try {
@@ -403,11 +492,10 @@ app.get('/api/clients', (req, res) => {
   }
 });
 
-app.post('/api/clients', (req, res) => {
-  try {
+app.post('/api/clients', (req, res) => {  try {
     const client = {
       ...req.body,
-      id: Date.now().toString(),
+      id: db.getNextClientId(),
       totalOrders: 0,
       totalSpent: 0,
       createdAt: new Date().toISOString()
@@ -494,7 +582,7 @@ app.get('/api/orders', (req, res) => {
 
 app.post('/api/orders', (req, res) => {
   try {
-    const orderId = req.body.id || Date.now().toString();
+    const orderId = req.body.id || db.getNextOrderId();
     
     // Extraire seulement les champs nécessaires pour la table orders
     const order = {
@@ -572,11 +660,10 @@ app.get('/api/professional-clients', (req, res) => {
   }
 });
 
-app.post('/api/professional-clients', (req, res) => {
-  try {
+app.post('/api/professional-clients', (req, res) => {  try {
     const client = {
       ...req.body,
-      id: Date.now().toString(),
+      id: db.getNextProfessionalClientId(),
       totalOrders: 0,
       totalSpent: 0,
       outstandingAmount: 0,
