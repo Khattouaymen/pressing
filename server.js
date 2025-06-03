@@ -234,51 +234,13 @@ class DatabaseManager {
   getAllOrders() {
     return this.db.prepare('SELECT * FROM orders ORDER BY createdAt DESC').all();
   }  insertOrder(order) {
-    // Détecter si c'est un client invité
-    const isGuestClient = order.clientId && order.clientId.startsWith('GUEST');
-    
-    if (isGuestClient) {
-      // Vérifier si le client temporaire existe déjà
-      const existingClient = this.db.prepare('SELECT id FROM clients WHERE id = ?').get(order.clientId);
-      
-      if (!existingClient) {
-        // Créer un client temporaire pour les clients invités
-        const tempClient = {
-          id: order.clientId,
-          firstName: order.clientName.split(' ')[0] || 'Client',
-          lastName: order.clientName.split(' ').slice(1).join(' ') || 'Invité',
-          phone: 'Non renseigné',
-          email: '',
-          address: '',
-          type: 'individual',
-          companyName: '',
-          createdAt: new Date().toISOString(),
-          isTemporary: 1
-        };
-        
-        console.log('🔍 Création client temporaire:', tempClient);
-        
-        // Insérer le client temporaire en base
-        const clientStmt = this.db.prepare(`
-          INSERT INTO clients (id, firstName, lastName, phone, email, address, type, companyName, createdAt, isTemporary, totalOrders, totalSpent)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `);
-        clientStmt.run(
-          tempClient.id, tempClient.firstName, tempClient.lastName, tempClient.phone,
-          tempClient.email, tempClient.address, tempClient.type, tempClient.companyName,
-          tempClient.createdAt, tempClient.isTemporary, 0, 0
-        );
-      } else {
-        console.log('🔍 Client temporaire existant trouvé:', order.clientId);
-      }
-    }
-    
     console.log('🔍 Insertion de commande:', {
       orderId: order.id,
       clientId: order.clientId,
-      isGuestClient: isGuestClient,
       clientName: order.clientName
-    });    const stmt = this.db.prepare(`
+    });
+
+    const stmt = this.db.prepare(`
       INSERT INTO orders (id, clientId, clientName, totalAmount, status, paymentStatus, createdAt, estimatedDate, isExceptionalPrice)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
@@ -288,8 +250,8 @@ class DatabaseManager {
       order.isExceptionalPrice ? 1 : 0  // Convert boolean to integer
     );
 
-    // Mettre à jour les statistiques du client
-    if (order.clientId && !order.clientId.startsWith('GUEST')) {
+    // Mettre à jour les statistiques du client (seulement pour les vrais clients)
+    if (order.clientId) {
       const updateClientStmt = this.db.prepare(`
         UPDATE clients 
         SET totalOrders = totalOrders + 1, 
@@ -301,6 +263,8 @@ class DatabaseManager {
         clientId: order.clientId,
         newOrderAmount: order.totalAmount
       });
+    } else {
+      console.log('🔍 Commande d\'invité créée - pas de mise à jour des statistiques client');
     }
   }
   updateOrder(order) {
@@ -318,12 +282,11 @@ class DatabaseManager {
   // Fonction pour recalculer les statistiques des clients
   recalculateClientStats() {
     console.log('🔄 Recalcul des statistiques des clients...');
-    
-    // Recalculer pour les clients individuels
+      // Recalculer pour les clients individuels
     const clientStats = this.db.prepare(`
       SELECT clientId, COUNT(*) as orderCount, SUM(totalAmount) as totalSpent
       FROM orders 
-      WHERE clientId IS NOT NULL AND clientId != '' AND NOT clientId LIKE 'GUEST%'
+      WHERE clientId IS NOT NULL
       GROUP BY clientId
     `).all();
 

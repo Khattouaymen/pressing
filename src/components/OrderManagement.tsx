@@ -206,28 +206,20 @@ export const OrderManagement = () => {
         clientData = createdClient;
         clientName = `${newClient.firstName} ${newClient.lastName}`;      } else {
         // Mode guest - générer automatiquement les informations du client invité
-        // Générer le prochain numéro de client invité séquentiel
+        // Les clients invités ne sont pas stockés, on génère juste un nom séquentiel
         let nextGuestNumber = 1;
-        while (clients.some(client => client.id === `GUEST${nextGuestNumber}`)) {
-          nextGuestNumber++;
-        }
+        // Compter les commandes existantes avec des noms d'invités pour éviter les doublons
+        const guestOrders = orders.filter(order => order.clientName.includes('Client Invité'));
+        nextGuestNumber = guestOrders.length + 1;
         
-        // Utiliser les informations fournies ou générer automatiquement
-        const guestData = {
-          firstName: guestClient.firstName || 'Client',
-          lastName: guestClient.lastName || `Invité ${nextGuestNumber}`,
-          phone: guestClient.phone || 'Non renseigné',
-          email: guestClient.email || '',
-          address: guestClient.address || '',
-          type: 'individual' as const,
-          companyName: ''
-        };
-        
-        clientData = { id: `GUEST${nextGuestNumber}`, ...guestData };
-        clientName = `${guestData.firstName} ${guestData.lastName}`;
-      }const orderData: Order = {
+        // Pas besoin de clientData pour les invités, juste le nom
+        clientData = null; // Les invités n'ont pas de clientId
+        clientName = `Client Invité ${nextGuestNumber}`;
+      }
+
+      const orderData: Order = {
         id: `PR${nextOrderNumber}`, // Génération d'un ID séquentiel commençant par 1
-        clientId: clientData.id,
+        clientId: clientData?.id || null, // null pour les clients invités
         clientName: clientName,
         pieces: orderPieces,
         totalAmount,
