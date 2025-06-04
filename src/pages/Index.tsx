@@ -23,13 +23,89 @@ import { ClientManagement } from "@/components/ClientManagement";
 import { OrderManagement } from "@/components/OrderManagement";
 import { ProfessionalDashboard } from "@/components/ProfessionalDashboard";
 import { PieceManagement } from "@/components/PieceManagement";
-import { useDashboardStats } from "@/hooks/useDashboardStats";
+import { useOrders, useClients, useProfessionalOrders, useProfessionalClients } from "@/hooks/useApiDatabase";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState("dashboard");
 
-  // Fetch dynamic data for dashboard
-  const { stats, recentOrders, loading } = useDashboardStats();
+  // Use the working hooks that all other sections use successfully
+  const { orders, loading: ordersLoading } = useOrders();
+  const { clients, loading: clientsLoading } = useClients();
+  const { orders: professionalOrders, loading: profOrdersLoading } = useProfessionalOrders();
+  const { clients: professionalClients, loading: profClientsLoading } = useProfessionalClients();
+
+  // Calculate stats from working data
+  const loading = ordersLoading || clientsLoading || profOrdersLoading || profClientsLoading;
+
+  const calculateStats = () => {
+    if (loading) {
+      return {
+        todayOrders: 0,
+        pendingOrders: 0,
+        completedToday: 0,
+        revenue: 0,
+        individualClients: 0,
+        professionalClients: 0
+      };
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    
+    // Combine all orders
+    const allOrders = [
+      ...orders.map((order: any) => ({ ...order, type: 'individual' })),
+      ...professionalOrders.map((order: any) => ({ ...order, type: 'professional' }))
+    ];
+
+    // Calculate stats using the same logic but with working data
+    const todayOrders = allOrders.filter(order => 
+      order.createdAt.startsWith(today)
+    ).length;
+
+    const pendingOrders = allOrders.filter(order => 
+      order.status === 'processing' || order.status === 'received'
+    ).length;
+
+    const completedToday = allOrders.filter(order => 
+      order.createdAt.startsWith(today) && order.status === 'ready'
+    ).length;
+
+    const revenue = allOrders
+      .filter(order => order.createdAt.startsWith(today))
+      .reduce((sum, order) => sum + order.totalAmount, 0);
+
+    return {
+      todayOrders,
+      pendingOrders,
+      completedToday,
+      revenue,
+      individualClients: clients.length,
+      professionalClients: professionalClients.length
+    };
+  };
+
+  const getRecentOrders = () => {
+    if (loading) return [];
+    
+    const allOrders = [
+      ...orders.map((order: any) => ({ ...order, type: 'individual' })),
+      ...professionalOrders.map((order: any) => ({ ...order, type: 'professional' }))
+    ];
+
+    return allOrders
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5)
+      .map(order => ({
+        id: order.id,
+        clientName: order.clientName,
+        totalAmount: order.totalAmount,
+        status: order.status,
+        createdAt: order.createdAt
+      }));
+  };
+
+  const stats = calculateStats();
+  const recentOrders = getRecentOrders();
   const getStatusColor = (status: string) => {
     switch (status) {
       case "received": return "bg-blue-100 text-blue-800";

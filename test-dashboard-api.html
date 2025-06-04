@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Dashboard API Connection</title>
+</head>
+<body>
+    <h1>Test Dashboard API via Tunnel</h1>
+    <div id="results"></div>
+    <script>
+        const resultsDiv = document.getElementById('results');
+        
+        // Dynamic API base URL detection - exactly like the hook
+        const getApiBaseUrl = () => {
+            const currentOrigin = window.location.origin;
+            
+            console.log('Current origin:', currentOrigin);
+            
+            // Check if we're accessing via dev tunnels
+            if (currentOrigin.includes('devtunnels.ms')) {
+                // Extract the tunnel prefix and construct API URL
+                // From https://j9cqjllv-8080.uks1.devtunnels.ms to https://j9cqjllv-3001.uks1.devtunnels.ms
+                const tunnelBase = currentOrigin.replace('-8080', '-3001');
+                const apiUrl = `${tunnelBase}/api`;
+                console.log('Tunnel detected, using API URL:', apiUrl);
+                return apiUrl;
+            }
+            
+            // Default to localhost for local development
+            const localUrl = 'http://localhost:3001/api';
+            console.log('Local detected, using API URL:', localUrl);
+            return localUrl;
+        };
+
+        const API_BASE_URL = getApiBaseUrl();
+        
+        resultsDiv.innerHTML += `<p><strong>Current Origin:</strong> ${window.location.origin}</p>`;
+        resultsDiv.innerHTML += `<p><strong>API Base URL:</strong> ${API_BASE_URL}</p>`;
+        
+        // Test API connection
+        async function testAPI() {
+            try {
+                resultsDiv.innerHTML += `<p>Testing API connection...</p>`;
+                
+                const response = await fetch(`${API_BASE_URL}/orders`, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                resultsDiv.innerHTML += `<p><strong>Response Status:</strong> ${response.status}</p>`;
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    resultsDiv.innerHTML += `<p><strong>Orders Count:</strong> ${data.length}</p>`;
+                    resultsDiv.innerHTML += `<p><strong>✅ API Connection Successful!</strong></p>`;
+                    resultsDiv.innerHTML += `<pre>${JSON.stringify(data.slice(0, 2), null, 2)}</pre>`;
+                } else {
+                    resultsDiv.innerHTML += `<p><strong>❌ API Error:</strong> ${response.status} ${response.statusText}</p>`;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML += `<p><strong>❌ Connection Error:</strong> ${error.message}</p>`;
+                console.error('API Test Error:', error);
+            }
+        }
+        
+        testAPI();
+    </script>
+</body>
+</html>

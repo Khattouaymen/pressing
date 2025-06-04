@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Connection Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        .info { background-color: #d1ecf1; color: #0c5460; }
+        button { margin: 5px; padding: 10px 20px; }
+    </style>
+</head>
+<body>
+    <h1>API Connection Test</h1>
+    
+    <div id="info" class="result info">
+        <h3>Environment Info:</h3>
+        <p>Current Origin: <span id="current-origin"></span></p>
+        <p>Detected API URL: <span id="api-url"></span></p>
+    </div>
+    
+    <button onclick="testLocalAPI()">Test Local API</button>
+    <button onclick="testTunnelAPI()">Test Tunnel API</button>
+    <button onclick="testAutoDetection()">Test Auto Detection</button>
+    
+    <div id="results"></div>
+
+    <script>
+        // Display environment info
+        document.getElementById('current-origin').textContent = window.location.origin;
+        
+        // Copy the same detection logic from the app
+        const getApiBaseUrl = () => {
+            const currentOrigin = window.location.origin;
+            
+            console.log('Detecting API URL from origin:', currentOrigin);
+            
+            if (currentOrigin.includes('devtunnels.ms')) {
+                const tunnelBase = currentOrigin.replace('-8080', '-3001');
+                const apiUrl = `${tunnelBase}/api`;
+                console.log('Tunnel environment detected, using API URL:', apiUrl);
+                return apiUrl;
+            }
+            
+            const localUrl = 'http://localhost:3001/api';
+            console.log('Local environment detected, using API URL:', localUrl);
+            return localUrl;
+        };
+        
+        const API_BASE_URL = getApiBaseUrl();
+        document.getElementById('api-url').textContent = API_BASE_URL;
+        
+        function addResult(message, type = 'info') {
+            const div = document.createElement('div');
+            div.className = `result ${type}`;
+            div.innerHTML = message;
+            document.getElementById('results').appendChild(div);
+        }
+        
+        async function testAPI(baseUrl, label) {
+            try {
+                addResult(`🔄 Testing ${label}: ${baseUrl}`, 'info');
+                
+                const response = await fetch(`${baseUrl}/clients`);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    addResult(`✅ ${label} SUCCESS: Got ${data.length} clients`, 'success');
+                    console.log(`${label} response:`, data);
+                } else {
+                    addResult(`❌ ${label} FAILED: HTTP ${response.status} - ${response.statusText}`, 'error');
+                }
+            } catch (error) {
+                addResult(`❌ ${label} ERROR: ${error.message}`, 'error');
+                console.error(`${label} error:`, error);
+            }
+        }
+        
+        async function testLocalAPI() {
+            await testAPI('http://localhost:3001/api', 'Local API');
+        }
+        
+        async function testTunnelAPI() {
+            await testAPI('https://j9cqjllv-3001.uks1.devtunnels.ms/api', 'Tunnel API');
+        }
+        
+        async function testAutoDetection() {
+            await testAPI(API_BASE_URL, 'Auto-Detected API');
+        }
+        
+        // Auto-test on page load
+        setTimeout(() => {
+            testAutoDetection();
+        }, 1000);
+    </script>
+</body>
+</html>

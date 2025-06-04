@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Debug - Tunnel Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .log { background: #f4f4f4; padding: 10px; margin: 10px 0; border-radius: 4px; }
+        .success { background: #d4edda; border: 1px solid #c3e6cb; }
+        .error { background: #f8d7da; border: 1px solid #f5c6cb; }
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+    </style>
+</head>
+<body>
+    <h1>Dashboard API Debug - Dev Tunnel</h1>
+    <button onclick="testDashboardAPI()">Test Dashboard API</button>
+    <button onclick="clearLogs()">Clear Logs</button>
+    
+    <div id="logs"></div>
+
+    <script>
+        function log(message, type = 'info') {
+            const logsDiv = document.getElementById('logs');
+            const logDiv = document.createElement('div');
+            logDiv.className = `log ${type}`;
+            logDiv.innerHTML = `<strong>${new Date().toLocaleTimeString()}</strong>: ${message}`;
+            logsDiv.appendChild(logDiv);
+            console.log(message);
+        }
+
+        function clearLogs() {
+            document.getElementById('logs').innerHTML = '';
+        }
+
+        function getApiBaseUrl() {
+            const currentOrigin = window.location.origin;
+            log(`Current origin: ${currentOrigin}`);
+            
+            if (currentOrigin.includes('devtunnels.ms')) {
+                const tunnelBase = currentOrigin.replace('-8080', '-3001');
+                const apiUrl = `${tunnelBase}/api`;
+                log(`Tunnel detected, using API URL: ${apiUrl}`);
+                return apiUrl;
+            }
+            
+            const localUrl = 'http://localhost:3001/api';
+            log(`Local environment, using API URL: ${localUrl}`);
+            return localUrl;
+        }
+
+        async function testEndpoint(url, name) {
+            try {
+                log(`Testing ${name} at: ${url}`);
+                const response = await fetch(url, {
+                    method: 'GET',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                });
+                
+                log(`${name} - Status: ${response.status} ${response.statusText}`, 
+                    response.ok ? 'success' : 'error');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    log(`${name} - Data received: ${data.length} items`, 'success');
+                    log(`${name} - Sample data: <pre>${JSON.stringify(data.slice(0, 2), null, 2)}</pre>`);
+                    return data;
+                } else {
+                    const errorText = await response.text();
+                    log(`${name} - Error: ${errorText}`, 'error');
+                    return null;
+                }
+            } catch (error) {
+                log(`${name} - Network Error: ${error.message}`, 'error');
+                return null;
+            }
+        }
+
+        async function testDashboardAPI() {
+            clearLogs();
+            log('🚀 Starting Dashboard API Test');
+            log(`Window location: ${window.location.href}`);
+            
+            const apiBaseUrl = getApiBaseUrl();
+            
+            // Add delay for tunnel connections
+            if (window.location.origin.includes('devtunnels.ms')) {
+                log('⏳ Tunnel detected, adding 2 second delay...');
+                await new Promise(resolve => setTimeout(resolve, 2000));
+            }
+            
+            // Test all endpoints that the dashboard uses
+            const endpoints = [
+                { url: `${apiBaseUrl}/orders`, name: 'Orders' },
+                { url: `${apiBaseUrl}/professional-orders`, name: 'Professional Orders' },
+                { url: `${apiBaseUrl}/clients`, name: 'Clients' },
+                { url: `${apiBaseUrl}/professional-clients`, name: 'Professional Clients' }
+            ];
+            
+            const results = {};
+            
+            for (const endpoint of endpoints) {
+                const data = await testEndpoint(endpoint.url, endpoint.name);
+                results[endpoint.name] = data;
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 100));
+            }
+            
+            // Calculate stats like the dashboard does
+            try {
+                log('📊 Calculating dashboard statistics...');
+                
+                const orders = results['Orders'] || [];
+                const profOrders = results['Professional Orders'] || [];
+                const clients = results['Clients'] || [];
+                const profClients = results['Professional Clients'] || [];
+                
+                const today = new Date().toISOString().split('T')[0];
+                
+                // Combine all orders
+                const allOrders = [
+                    ...orders.map(order => ({ ...order, type: 'individual' })),
+                    ...profOrders.map(order => ({ ...order, type: 'professional' }))
+                ];
+                  // Calculate stats
+                const todayOrders = allOrders.filter(order => 
+                    order.createdAt && order.createdAt.startsWith(today)
+                ).length;
+                
+                const pendingOrders = allOrders.filter(order => 
+                    order.status === 'processing' || order.status === 'received'
+                ).length;
+                
+                const completedToday = allOrders.filter(order => 
+                    order.status === 'ready' && 
+                    order.createdAt && order.createdAt.startsWith(today)
+                ).length;
+                
+                const revenue = allOrders
+                    .filter(order => order.createdAt && order.createdAt.startsWith(today))
+                    .reduce((sum, order) => sum + (parseFloat(order.totalAmount) || 0), 0);
+                
+                // Debug status values
+                log(`🔍 Status Debug Info:`, 'info');
+                const uniqueStatuses = [...new Set(allOrders.map(order => order.status))];
+                log(`Available statuses in data: ${uniqueStatuses.join(', ')}`, 'info');
+                
+                // Count orders by status
+                const statusCounts = {};
+                uniqueStatuses.forEach(status => {
+                    statusCounts[status] = allOrders.filter(order => order.status === status).length;
+                });
+                log(`Status distribution: <pre>${JSON.stringify(statusCounts, null, 2)}</pre>`, 'info');
+                
+                const stats = {
+                    todayOrders,
+                    pendingOrders,
+                    completedToday,
+                    revenue: revenue.toFixed(2),
+                    individualClients: clients.length,
+                    professionalClients: profClients.length,
+                    totalOrders: allOrders.length
+                };
+                
+                log(`📈 Dashboard Stats Calculated:`, 'success');
+                log(`<pre>${JSON.stringify(stats, null, 2)}</pre>`, 'success');
+                
+                // Recent orders
+                const recentOrders = allOrders
+                    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt))
+                    .slice(0, 5)
+                    .map(order => ({
+                        id: order.id,
+                        clientName: order.clientName || 'Unknown',
+                        totalAmount: parseFloat(order.totalAmount) || 0,
+                        status: order.status,
+                        type: order.type
+                    }));
+                
+                log(`📋 Recent Orders:`, 'success');
+                log(`<pre>${JSON.stringify(recentOrders, null, 2)}</pre>`, 'success');
+                
+            } catch (error) {
+                log(`❌ Error calculating stats: ${error.message}`, 'error');
+            }
+            
+            log('✅ Dashboard API Test Complete');
+        }
+
+        // Auto-run test when page loads
+        window.addEventListener('load', () => {
+            log('🔧 Debug page loaded');
+            // Automatically run test after a short delay
+            setTimeout(testDashboardAPI, 1000);
+        });
+    </script>
+</body>
+</html>

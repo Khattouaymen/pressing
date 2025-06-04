@@ -1,6 +1,51 @@
 import { useState, useEffect } from 'react';
 
-const API_BASE_URL = 'http://localhost:3001/api';
+// Dynamic API base URL detection
+const getApiBaseUrl = (): string => {
+  const currentHost = window.location.hostname;
+  const currentOrigin = window.location.origin;
+  
+  console.log('Detecting API URL from origin:', currentOrigin);
+  
+  // Check if we're accessing via dev tunnels
+  if (currentOrigin.includes('devtunnels.ms')) {
+    // Extract the tunnel prefix and construct API URL
+    // From https://j9cqjllv-8080.uks1.devtunnels.ms to https://j9cqjllv-3001.uks1.devtunnels.ms
+    const tunnelBase = currentOrigin.replace('-8080', '-3001');
+    const apiUrl = `${tunnelBase}/api`;
+    console.log('Tunnel environment detected, using API URL:', apiUrl);
+    return apiUrl;
+  }
+  
+  // Default to localhost for local development
+  const localUrl = 'http://localhost:3001/api';
+  console.log('Local environment detected, using API URL:', localUrl);
+  return localUrl;
+};
+
+const API_BASE_URL = getApiBaseUrl();
+
+// Test API connectivity
+const testApiConnection = async (): Promise<boolean> => {
+  try {
+    const response = await fetch(`${API_BASE_URL}/clients`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    console.log('API connection test:', response.ok ? 'SUCCESS' : 'FAILED', response.status);
+    return response.ok;
+  } catch (error) {
+    console.error('API connection test failed:', error);
+    return false;
+  }
+};
+
+// Test the connection on startup
+setTimeout(() => {
+  testApiConnection();
+}, 1000);
 
 // Types pour l'interface
 export interface Client {
@@ -85,18 +130,26 @@ export interface ProfessionalOrder {
 const useApi = <T>(endpoint: string) => {
   const [data, setData] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
-
   const fetchData = async () => {
     try {
       setLoading(true);
+      console.log(`Fetching data from: ${API_BASE_URL}${endpoint}`);
       const response = await fetch(`${API_BASE_URL}${endpoint}`);
+      
       if (!response.ok) {
-        throw new Error(`Erreur HTTP: ${response.status}`);
+        throw new Error(`Erreur HTTP: ${response.status} - ${response.statusText}`);
       }
+      
       const result = await response.json();
+      console.log(`Successfully fetched ${result.length || 0} items from ${endpoint}`);
       setData(result);
     } catch (error) {
-      console.error(`Erreur lors du chargement de ${endpoint}:`, error);
+      console.error(`❌ Erreur lors du chargement de ${endpoint}:`, error);
+      console.error('Current API URL:', API_BASE_URL);
+      console.error('Full URL attempted:', `${API_BASE_URL}${endpoint}`);
+      
+      // Set empty array on error so UI doesn't break
+      setData([]);
     } finally {
       setLoading(false);
     }
