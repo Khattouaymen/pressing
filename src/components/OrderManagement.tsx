@@ -857,10 +857,9 @@ export const OrderManagement = () => {
                 </Tabs>
               </div>
 
-              <Separator />              {/* Sélection des pièces avec images améliorée */}
-              <div className="space-y-6">
+              <Separator />              {/* Sélection des pièces avec images améliorée */}              <div className="space-y-6">
                 <div className="flex items-center justify-between">
-                  <Label className="text-base font-medium">Sélection des pièces</Label>
+                  <Label className="text-base font-medium">Sélection des pièces (clients individuels)</Label>
                   <div className="flex items-center gap-2">
                     <Search className="w-4 h-4 text-gray-400" />
                     <Input
@@ -873,12 +872,12 @@ export const OrderManagement = () => {
                 </div>
                 
                 <div className="space-y-4">
-                  {/* Grille de sélection visuelle des pièces - Version améliorée */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto border rounded-lg p-4">
+                  {/* Grille de sélection visuelle des pièces - Version améliorée */}                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 max-h-96 overflow-y-auto border rounded-lg p-4">
                     {pieces
                       .filter(piece => 
-                        piece.name.toLowerCase().includes(pieceSearchTerm.toLowerCase()) ||
-                        piece.category?.toLowerCase().includes(pieceSearchTerm.toLowerCase())
+                        !piece.isProfessional && // Exclure les pièces professionnelles pour les clients individuels
+                        (piece.name.toLowerCase().includes(pieceSearchTerm.toLowerCase()) ||
+                        piece.category?.toLowerCase().includes(pieceSearchTerm.toLowerCase()))
                       )
                       .map((piece) => (
                       <div

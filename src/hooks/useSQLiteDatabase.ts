@@ -32,6 +32,7 @@ export interface Piece {
   cleaningPressingPrice: number;
   imageUrl?: string;
   description?: string;
+  isProfessional?: boolean; // Nouveau champ pour identifier les pièces B2B
 }
 
 export interface ProfessionalClient {
@@ -55,6 +56,7 @@ export interface ProfessionalOrder {
   clientId: string;
   clientName: string;
   pieces: number;
+  selectedPieces?: Array<{pieceId: string, quantity: number}>;
   service: string;
   totalAmount: number;
   status: 'received' | 'processing' | 'ready' | 'delivered';
@@ -173,14 +175,14 @@ export function usePieces() {
       setLoading(false);
     }
   };
-
   const addPiece = async (pieceData: Omit<Piece, 'id'>) => {
     try {
       const db = getDatabase();
       const newPiece: DbPiece = {
         ...pieceData,
         id: Date.now().toString(),
-        imageUrl: pieceData.imageUrl || ''
+        imageUrl: pieceData.imageUrl || '',
+        isProfessional: pieceData.isProfessional || false
       };
       db.insertPiece(newPiece);
       await loadPieces();
@@ -190,13 +192,13 @@ export function usePieces() {
       throw error;
     }
   };
-
   const updatePiece = async (piece: Piece) => {
     try {
       const db = getDatabase();
       const dbPiece: DbPiece = {
         ...piece,
-        imageUrl: piece.imageUrl || ''
+        imageUrl: piece.imageUrl || '',
+        isProfessional: piece.isProfessional || false
       };
       db.updatePiece(dbPiece);
       await loadPieces();

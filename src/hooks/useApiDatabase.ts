@@ -71,6 +71,7 @@ export interface Piece {
   cleaningPressingPrice: number;
   imageUrl?: string;
   description?: string;
+  isProfessional?: boolean; // Nouveau champ pour identifier les pièces B2B
 }
 
 export interface OrderPiece {
@@ -116,6 +117,7 @@ export interface ProfessionalOrder {
   clientId: string;
   clientName: string;
   pieces: number;
+  selectedPieces?: Array<{pieceId: string, quantity: number}>;
   service: string;
   totalAmount: number;
   status: 'received' | 'processing' | 'ready' | 'delivered';

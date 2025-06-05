@@ -17,6 +17,7 @@ interface Piece {
   pressingPrice: number;
   cleaningPressingPrice: number;
   imageUrl?: string;
+  isProfessional?: boolean;
 }
 
 interface OrderPiece {
@@ -53,23 +54,21 @@ interface Client {
   companyName?: string;
 }
 
-export const OrderManagement = () => {
-  // Available pieces with their prices
+export const OrderManagement = () => {  // Available pieces with their prices
   const availablePieces: Piece[] = [
-    { id: 'chemise', name: 'Chemise', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00, imageUrl: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&h=300&fit=crop&crop=center" },
-    { id: 'pantalon', name: 'Pantalon', category: 'vetement', pressingPrice: 4.00, cleaningPressingPrice: 9.00, imageUrl: "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=300&h=300&fit=crop&crop=center" },
-    { id: 'veste', name: 'Veste', category: 'vetement', pressingPrice: 6.00, cleaningPressingPrice: 12.00, imageUrl: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300&h=300&fit=crop&crop=center" },
-    { id: 'robe', name: 'Robe', category: 'vetement', pressingPrice: 5.00, cleaningPressingPrice: 10.00, imageUrl: "https://images.unsplash.com/photo-1566479179817-0b9e588a2c88?w=300&h=300&fit=crop&crop=center" },
-    { id: 'jupe', name: 'Jupe', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00, imageUrl: "https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=300&h=300&fit=crop&crop=center" },
-    { id: 'pull', name: 'Pull/Tricot', category: 'vetement', pressingPrice: 4.50, cleaningPressingPrice: 9.50, imageUrl: "https://images.unsplash.com/photo-1520975954732-35dd22299614?w=300&h=300&fit=crop&crop=center" },
-    { id: 'costume', name: 'Costume complet', category: 'vetement', pressingPrice: 12.00, cleaningPressingPrice: 20.00, imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center" },
-    { id: 'manteau', name: 'Manteau', category: 'vetement', pressingPrice: 8.00, cleaningPressingPrice: 15.00, imageUrl: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop&crop=center" },
-    { id: 'drap', name: 'Drap', category: 'linge', pressingPrice: 5.00, cleaningPressingPrice: 8.00, imageUrl: "https://images.unsplash.com/photo-1586985564150-0bf609135187?w=300&h=300&fit=crop&crop=center" },
-    { id: 'housse', name: 'Housse de couette', category: 'linge', pressingPrice: 6.00, cleaningPressingPrice: 10.00, imageUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&h=300&fit=crop&crop=center" },
-    { id: 'nappe', name: 'Nappe', category: 'linge', pressingPrice: 4.00, cleaningPressingPrice: 7.00, imageUrl: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=300&h=300&fit=crop&crop=center" },
-    { id: 'rideau', name: 'Rideau', category: 'linge', pressingPrice: 8.00, cleaningPressingPrice: 12.00, imageUrl: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop&crop=center" },
-    { id: 'cravate', name: 'Cravate', category: 'accessoire', pressingPrice: 2.50, cleaningPressingPrice: 5.00, imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center" },
-    { id: 'foulard', name: 'Foulard', category: 'accessoire', pressingPrice: 3.00, cleaningPressingPrice: 6.00, imageUrl: "https://images.unsplash.com/photo-1609709295948-17d77cb2a69e?w=300&h=300&fit=crop&crop=center" }
+    { id: 'chemise', name: 'Chemise', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00, imageUrl: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'pantalon', name: 'Pantalon', category: 'vetement', pressingPrice: 4.00, cleaningPressingPrice: 9.00, imageUrl: "https://images.unsplash.com/photo-1473966968600-fa801b869a1a?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'veste', name: 'Veste', category: 'vetement', pressingPrice: 6.00, cleaningPressingPrice: 12.00, imageUrl: "https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'robe', name: 'Robe', category: 'vetement', pressingPrice: 5.00, cleaningPressingPrice: 10.00, imageUrl: "https://images.unsplash.com/photo-1566479179817-0b9e588a2c88?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'jupe', name: 'Jupe', category: 'vetement', pressingPrice: 3.50, cleaningPressingPrice: 8.00, imageUrl: "https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'pull', name: 'Pull/Tricot', category: 'vetement', pressingPrice: 4.50, cleaningPressingPrice: 9.50, imageUrl: "https://images.unsplash.com/photo-1520975954732-35dd22299614?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'costume', name: 'Costume complet', category: 'vetement', pressingPrice: 12.00, cleaningPressingPrice: 20.00, imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center", isProfessional: true },
+    { id: 'manteau', name: 'Manteau', category: 'vetement', pressingPrice: 8.00, cleaningPressingPrice: 15.00, imageUrl: "https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'drap', name: 'Drap', category: 'linge', pressingPrice: 5.00, cleaningPressingPrice: 8.00, imageUrl: "https://images.unsplash.com/photo-1586985564150-0bf609135187?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'housse', name: 'Housse de couette', category: 'linge', pressingPrice: 6.00, cleaningPressingPrice: 10.00, imageUrl: "https://images.unsplash.com/photo-1522771739844-6a9f6d5f14af?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'nappe', name: 'Nappe', category: 'linge', pressingPrice: 4.00, cleaningPressingPrice: 7.00, imageUrl: "https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=300&h=300&fit=crop&crop=center", isProfessional: true },
+    { id: 'rideau', name: 'Rideau', category: 'linge', pressingPrice: 8.00, cleaningPressingPrice: 12.00, imageUrl: "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop&crop=center", isProfessional: false },    { id: 'cravate', name: 'Cravate', category: 'accessoire', pressingPrice: 2.50, cleaningPressingPrice: 5.00, imageUrl: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center", isProfessional: false },
+    { id: 'foulard', name: 'Foulard', category: 'accessoire', pressingPrice: 3.00, cleaningPressingPrice: 6.00, imageUrl: "https://images.unsplash.com/photo-1609709295948-17d77cb2a69e?w=300&h=300&fit=crop&crop=center", isProfessional: false }
   ];
 
   const [searchTerm, setSearchTerm] = useState("");
@@ -525,16 +524,14 @@ export const OrderManagement = () => {
                 </Tabs>
               </div>
 
-              <Separator />
-
-              {/* Sélection des pièces avec images */}
+              <Separator />              {/* Sélection des pièces avec images */}
               <div className="space-y-4">
-                <Label className="text-base font-medium">Sélection des pièces</Label>
+                <Label className="text-base font-medium">Sélection des pièces (clients individuels)</Label>
                 
                 <div className="space-y-4">
                   {/* Grille de sélection visuelle des pièces */}
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 max-h-60 overflow-y-auto border rounded-lg p-3">
-                    {availablePieces.map((piece) => (
+                    {availablePieces.filter(piece => !piece.isProfessional).map((piece) => (
                       <div
                         key={piece.id}
                         className={`cursor-pointer border rounded-lg p-3 transition-all hover:shadow-md ${
@@ -700,14 +697,14 @@ export const OrderManagement = () => {
                 )}
 
                 {/* Prix exceptionnel */}
-                <div className="space-y-3">
-                  <div className="flex items-center space-x-2">
+                <div className="space-y-3">                  <div className="flex items-center space-x-2">
                     <input
                       type="checkbox"
                       id="exceptionalPrice"
                       checked={isExceptionalPrice}
                       onChange={(e) => setIsExceptionalPrice(e.target.checked)}
                       className="rounded border-gray-300"
+                      aria-label="Appliquer un prix exceptionnel"
                     />
                     <Label htmlFor="exceptionalPrice">Appliquer un prix exceptionnel</Label>
                   </div>

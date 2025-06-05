@@ -208,21 +208,19 @@ class DatabaseManager {
   getAllPieces() {
     return this.db.prepare('SELECT * FROM pieces ORDER BY name').all();
   }
-
   insertPiece(piece) {
     const stmt = this.db.prepare(`
-      INSERT INTO pieces (id, name, category, pressingPrice, cleaningPressingPrice, imageUrl)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO pieces (id, name, category, pressingPrice, cleaningPressingPrice, imageUrl, isProfessional)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(piece.id, piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl);
+    stmt.run(piece.id, piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl, piece.isProfessional ? 1 : 0);
   }
-
   updatePiece(piece) {
     const stmt = this.db.prepare(`
-      UPDATE pieces SET name = ?, category = ?, pressingPrice = ?, cleaningPressingPrice = ?, imageUrl = ?
+      UPDATE pieces SET name = ?, category = ?, pressingPrice = ?, cleaningPressingPrice = ?, imageUrl = ?, isProfessional = ?
       WHERE id = ?
     `);
-    stmt.run(piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl, piece.id);
+    stmt.run(piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl, piece.isProfessional ? 1 : 0, piece.id);
   }
 
   deletePiece(id) {

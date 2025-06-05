@@ -26,6 +26,7 @@ export interface DbPiece {
   pressingPrice: number;
   cleaningPressingPrice: number;
   imageUrl: string;
+  isProfessional?: boolean; // Nouveau champ pour identifier les pièces B2B
 }
 
 export interface DbOrder {
@@ -72,6 +73,7 @@ export interface DbProfessionalOrder {
   clientId: string;
   clientName: string;
   pieces: number;
+  selectedPieces?: Array<{pieceId: string, quantity: number}>;
   service: string;
   totalAmount: number;
   status: 'received' | 'processing' | 'ready' | 'delivered';
@@ -110,9 +112,7 @@ class DatabaseManager {
         companyName TEXT,
         siret TEXT
       )
-    `);
-
-    // Table des pièces
+    `);    // Table des pièces
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS pieces (
         id TEXT PRIMARY KEY,
@@ -120,7 +120,8 @@ class DatabaseManager {
         category TEXT NOT NULL,
         pressingPrice REAL NOT NULL,
         cleaningPressingPrice REAL NOT NULL,
-        imageUrl TEXT NOT NULL
+        imageUrl TEXT NOT NULL,
+        isProfessional BOOLEAN DEFAULT FALSE
       )
     `);
 
@@ -198,29 +199,28 @@ class DatabaseManager {
   private seedInitialData() {
     // Vérifier si les données existent déjà
     const clientCount = this.db.prepare('SELECT COUNT(*) as count FROM clients').get() as { count: number };
-    
-    if (clientCount.count === 0) {
+      if (clientCount.count === 0) {
       // Insérer les pièces
       const insertPiece = this.db.prepare(`
-        INSERT INTO pieces (id, name, category, pressingPrice, cleaningPressingPrice, imageUrl)
-        VALUES (?, ?, ?, ?, ?, ?)
+        INSERT INTO pieces (id, name, category, pressingPrice, cleaningPressingPrice, imageUrl, isProfessional)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
       `);
 
       const pieces = [
-        ['P001', 'Chemise', 'vetement', 3.50, 8.00, 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&h=300&fit=crop&crop=center'],
-        ['P002', 'Pantalon', 'vetement', 4.00, 9.50, 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=300&h=300&fit=crop&crop=center'],
-        ['P003', 'Veste', 'vetement', 6.50, 15.00, 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300&h=300&fit=crop&crop=center'],
-        ['P004', 'Robe', 'vetement', 5.00, 12.00, 'https://images.unsplash.com/photo-1566479179817-0b9e588a2c88?w=300&h=300&fit=crop&crop=center'],
-        ['P005', 'Manteau', 'vetement', 8.00, 18.00, 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop&crop=center'],
-        ['P006', 'Costume', 'vetement', 12.00, 25.00, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center'],
-        ['P007', 'Nappe', 'linge', 3.00, 7.50, 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=300&h=300&fit=crop&crop=center'],
-        ['P008', 'Cravate', 'accessoire', 2.50, 6.00, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center'],
-        ['P009', 'Jupe', 'vetement', 3.50, 8.00, 'https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=300&h=300&fit=crop&crop=center'],
-        ['P010', 'Pull/Tricot', 'vetement', 4.50, 9.50, 'https://images.unsplash.com/photo-1520975954732-35dd22299614?w=300&h=300&fit=crop&crop=center'],
-        ['P011', 'Housse de couette', 'linge', 6.00, 10.00, 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=300&h=300&fit=crop&crop=center'],
-        ['P012', 'Costume (complet)', 'vetement', 15.00, 30.00, 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300&h=300&fit=crop&crop=center'],
-        ['P013', 'Rideau', 'linge', 8.00, 12.00, 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop&crop=center'],
-        ['P014', 'Foulard', 'accessoire', 3.00, 6.00, 'https://images.unsplash.com/photo-1609709295948-17d77cb2a69e?w=300&h=300&fit=crop&crop=center']
+        ['P001', 'Chemise', 'vetement', 3.50, 8.00, 'https://images.unsplash.com/photo-1596755094514-f87e34085b2c?w=300&h=300&fit=crop&crop=center', 0],
+        ['P002', 'Pantalon', 'vetement', 4.00, 9.50, 'https://images.unsplash.com/photo-1624378439575-d8705ad7ae80?w=300&h=300&fit=crop&crop=center', 0],
+        ['P003', 'Veste', 'vetement', 6.50, 15.00, 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300&h=300&fit=crop&crop=center', 0],
+        ['P004', 'Robe', 'vetement', 5.00, 12.00, 'https://images.unsplash.com/photo-1566479179817-0b9e588a2c88?w=300&h=300&fit=crop&crop=center', 0],
+        ['P005', 'Manteau', 'vetement', 8.00, 18.00, 'https://images.unsplash.com/photo-1544966503-7cc5ac882d5f?w=300&h=300&fit=crop&crop=center', 0],
+        ['P006', 'Costume', 'vetement', 12.00, 25.00, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center', 0],
+        ['P007', 'Nappe', 'linge', 3.00, 7.50, 'https://images.unsplash.com/photo-1449824913935-59a10b8d2000?w=300&h=300&fit=crop&crop=center', 0],
+        ['P008', 'Cravate', 'accessoire', 2.50, 6.00, 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=300&h=300&fit=crop&crop=center', 0],
+        ['P009', 'Jupe', 'vetement', 3.50, 8.00, 'https://images.unsplash.com/photo-1582552938357-32b906df40cb?w=300&h=300&fit=crop&crop=center', 0],
+        ['P010', 'Pull/Tricot', 'vetement', 4.50, 9.50, 'https://images.unsplash.com/photo-1520975954732-35dd22299614?w=300&h=300&fit=crop&crop=center', 0],
+        ['P011', 'Housse de couette', 'linge', 6.00, 10.00, 'https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=300&h=300&fit=crop&crop=center', 0],
+        ['P012', 'Costume (complet)', 'vetement', 15.00, 30.00, 'https://images.unsplash.com/photo-1594938298603-c8148c4dae35?w=300&h=300&fit=crop&crop=center', 0],
+        ['P013', 'Rideau', 'linge', 8.00, 12.00, 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=300&h=300&fit=crop&crop=center', 0],
+        ['P014', 'Foulard', 'accessoire', 3.00, 6.00, 'https://images.unsplash.com/photo-1609709295948-17d77cb2a69e?w=300&h=300&fit=crop&crop=center', 0]
       ];
 
       pieces.forEach(piece => {
@@ -270,21 +270,19 @@ class DatabaseManager {
   getPieceById(id: string): DbPiece | undefined {
     return this.db.prepare('SELECT * FROM pieces WHERE id = ?').get(id) as DbPiece | undefined;
   }
-
   insertPiece(piece: DbPiece): void {
     const stmt = this.db.prepare(`
-      INSERT INTO pieces (id, name, category, pressingPrice, cleaningPressingPrice, imageUrl)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO pieces (id, name, category, pressingPrice, cleaningPressingPrice, imageUrl, isProfessional)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
     `);
-    stmt.run(piece.id, piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl);
+    stmt.run(piece.id, piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl, piece.isProfessional ? 1 : 0);
   }
-
   updatePiece(piece: DbPiece): void {
     const stmt = this.db.prepare(`
-      UPDATE pieces SET name = ?, category = ?, pressingPrice = ?, cleaningPressingPrice = ?, imageUrl = ?
+      UPDATE pieces SET name = ?, category = ?, pressingPrice = ?, cleaningPressingPrice = ?, imageUrl = ?, isProfessional = ?
       WHERE id = ?
     `);
-    stmt.run(piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl, piece.id);
+    stmt.run(piece.name, piece.category, piece.pressingPrice, piece.cleaningPressingPrice, piece.imageUrl, piece.isProfessional ? 1 : 0, piece.id);
   }
 
   deletePiece(id: string): void {

@@ -6,32 +6,35 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Switch } from "@/components/ui/switch";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Search, Package, Edit3, Trash2 } from "lucide-react";
 import { usePieces, Piece } from '@/hooks/useApiDatabase';
 
 export const PieceManagement = () => {
   const { pieces, loading, addPiece, updatePiece, deletePiece } = usePieces();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("all");
+  const [professionalFilter, setProfessionalFilter] = useState("all");
   const [isCreatingPiece, setIsCreatingPiece] = useState(false);
-  const [editingPiece, setEditingPiece] = useState<Piece | null>(null);    const [newPiece, setNewPiece] = useState({
+  const [editingPiece, setEditingPiece] = useState<Piece | null>(null);  const [newPiece, setNewPiece] = useState({
     name: '',
     category: 'vetement' as 'vetement' | 'linge' | 'accessoire',
     pressingPrice: '',
     cleaningPressingPrice: '',
-    imageUrl: ''
+    imageUrl: '',
+    isProfessional: false
   });  const resetForm = () => {
     setNewPiece({
       name: '',
       category: 'vetement' as 'vetement' | 'linge' | 'accessoire',
       pressingPrice: '',
       cleaningPressingPrice: '',
-      imageUrl: ''
+      imageUrl: '',
+      isProfessional: false
     });
     setEditingPiece(null);
-  };  const handleCreatePiece = async () => {
+  };const handleCreatePiece = async () => {
     if (!newPiece.name || !newPiece.category) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
@@ -120,7 +123,8 @@ export const PieceManagement = () => {
       category: piece.category,
       pressingPrice: piece.pressingPrice.toString(),
       cleaningPressingPrice: piece.cleaningPressingPrice.toString(),
-      imageUrl: piece.imageUrl || ''
+      imageUrl: piece.imageUrl || '',
+      isProfessional: piece.isProfessional || false
     });
   };
 
@@ -141,12 +145,14 @@ export const PieceManagement = () => {
       </div>
     );
   }
-
   const filteredPieces = pieces.filter(piece => {
     const matchesSearch = piece.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          piece.category.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesCategory = categoryFilter === "all" || piece.category === categoryFilter;
-    return matchesSearch && matchesCategory;
+    const matchesProfessional = professionalFilter === "all" || 
+                               (professionalFilter === "professional" && piece.isProfessional) ||
+                               (professionalFilter === "standard" && !piece.isProfessional);
+    return matchesSearch && matchesCategory && matchesProfessional;
   });
 
   const categories = [...new Set(pieces.map(piece => piece.category))];
@@ -164,9 +170,7 @@ export const PieceManagement = () => {
           <Plus className="w-4 h-4 mr-2" />
           Nouvelle Pièce
         </Button>
-      </div>
-
-      {/* Filters */}
+      </div>      {/* Filters */}
       <div className="flex flex-col sm:flex-row gap-4">
         <div className="relative flex-1">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
@@ -190,18 +194,38 @@ export const PieceManagement = () => {
             ))}
           </SelectContent>
         </Select>
+        <Select value={professionalFilter} onValueChange={setProfessionalFilter}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Type de clientèle" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Tous les types</SelectItem>
+            <SelectItem value="standard">Clients particuliers</SelectItem>
+            <SelectItem value="professional">Clients professionnels (B2B)</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Liste des pièces */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         {filteredPieces.map((piece) => (
-          <Card key={piece.id} className="hover:shadow-md transition-shadow">
-            <CardHeader className="pb-3">
+          <Card key={piece.id} className="hover:shadow-md transition-shadow">            <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">{piece.name}</CardTitle>
-                <Badge variant="secondary">{piece.category}</Badge>
+                <div className="flex gap-2">
+                  <Badge variant="secondary">{piece.category}</Badge>
+                  {piece.isProfessional ? (
+                    <Badge variant="default" className="bg-blue-600 hover:bg-blue-700">
+                      B2B
+                    </Badge>
+                  ) : (
+                    <Badge variant="default" className="bg-green-600 hover:bg-green-700">
+                      B2C
+                    </Badge>
+                  )}
+                </div>
               </div>
-            </CardHeader>            <CardContent className="space-y-3">
+            </CardHeader><CardContent className="space-y-3">
               <div className="relative mb-3">
                 <img 
                   src={piece.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3091/3091811.png'} 
@@ -309,6 +333,44 @@ export const PieceManagement = () => {
                 </SelectContent>
               </Select>
             </div>            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pressingPrice">Prix Pressing (DH)</Label>
+                <Input
+                  id="pressingPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newPiece.pressingPrice}
+                  onChange={(e) => setNewPiece({...newPiece, pressingPrice: e.target.value})}
+                  placeholder="0.00"
+                />
+              </div>
+              <div>
+                <Label htmlFor="cleaningPressingPrice">Prix Nettoyage + Pressing (DH)</Label>
+                <Input
+                  id="cleaningPressingPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newPiece.cleaningPressingPrice}
+                  onChange={(e) => setNewPiece({...newPiece, cleaningPressingPrice: e.target.value})}
+                  placeholder="0.00"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center space-x-2">
+              <Switch
+                id="isProfessional"
+                checked={newPiece.isProfessional}
+                onCheckedChange={(checked) => setNewPiece({...newPiece, isProfessional: checked})}
+              />
+              <Label htmlFor="isProfessional" className="text-sm font-medium">
+                Pièce destinée aux clients professionnels (B2B)
+              </Label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="pressingPrice">Prix Pressing (DH)</Label>
                 <Input
