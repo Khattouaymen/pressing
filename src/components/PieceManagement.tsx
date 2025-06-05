@@ -5,28 +5,126 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Plus, Search, Edit3, Trash2, Shirt, Coins } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Plus, Search, Package, Edit3, Trash2 } from "lucide-react";
 import { usePieces, Piece } from '@/hooks/useApiDatabase';
 
 export const PieceManagement = () => {
-  // Hooks de base de données
   const { pieces, loading, addPiece, updatePiece, deletePiece } = usePieces();
 
   const [searchTerm, setSearchTerm] = useState("");
-  const [isAddingPiece, setIsAddingPiece] = useState(false);
-  const [editingPiece, setEditingPiece] = useState<Piece | null>(null);
-  const [newPiece, setNewPiece] = useState({
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [isCreatingPiece, setIsCreatingPiece] = useState(false);
+  const [editingPiece, setEditingPiece] = useState<Piece | null>(null);    const [newPiece, setNewPiece] = useState({
     name: '',
     category: 'vetement' as 'vetement' | 'linge' | 'accessoire',
     pressingPrice: 0,
     cleaningPressingPrice: 0,
-    description: '',
     imageUrl: ''
-  });
+  });  const resetForm = () => {
+    setNewPiece({
+      name: '',
+      category: 'vetement' as 'vetement' | 'linge' | 'accessoire',
+      pressingPrice: 0,
+      cleaningPressingPrice: 0,
+      imageUrl: ''
+    });
+    setEditingPiece(null);
+  };
+  const handleCreatePiece = async () => {
+    if (!newPiece.name || !newPiece.category) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
 
-  // Affichage conditionnel pendant le chargement
+    if (newPiece.pressingPrice < 0 || newPiece.cleaningPressingPrice < 0) {
+      toast.error('Les prix ne peuvent pas être négatifs');
+      return;
+    }
+
+    try {
+      let nextPieceNumber = 1;
+      while (pieces.some(piece => piece.id === `PIECE${nextPieceNumber}`)) {
+        nextPieceNumber++;
+      }
+
+      const pieceData = {
+        id: `PIECE${nextPieceNumber}`,
+        ...newPiece,
+        createdAt: new Date().toISOString(),
+      };
+
+      await addPiece(pieceData);
+      setIsCreatingPiece(false);
+      resetForm();
+      toast.success(`Pièce "${pieceData.name}" créée avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de la création de la pièce:', error);
+      toast.error('Erreur lors de la création de la pièce');
+    }
+  };
+
+  const handleEditPiece = async () => {
+    if (!editingPiece || !newPiece.name || !newPiece.category) {
+      toast.error('Veuillez remplir tous les champs obligatoires');
+      return;
+    }
+
+    if (newPiece.pressingPrice < 0 || newPiece.cleaningPressingPrice < 0) {
+      toast.error('Les prix ne peuvent pas être négatifs');
+      return;
+    }
+
+    try {
+      const updatedPiece = {
+        ...editingPiece,
+        ...newPiece,
+        updatedAt: new Date().toISOString(),
+      };
+
+      await updatePiece(updatedPiece);
+      setEditingPiece(null);
+      resetForm();
+      toast.success(`Pièce "${updatedPiece.name}" modifiée avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de la modification de la pièce:', error);
+      toast.error('Erreur lors de la modification de la pièce');
+    }
+  };
+
+  const handleDeletePiece = async (piece: Piece) => {
+    if (!confirm(`Êtes-vous sûr de vouloir supprimer la pièce "${piece.name}" ?`)) {
+      return;
+    }
+
+    try {
+      await deletePiece(piece.id);
+      toast.success(`Pièce "${piece.name}" supprimée avec succès`);
+    } catch (error) {
+      console.error('Erreur lors de la suppression de la pièce:', error);
+      toast.error('Erreur lors de la suppression de la pièce');
+    }
+  };
+  const startEdit = (piece: Piece) => {
+    setEditingPiece(piece);
+    setNewPiece({
+      name: piece.name,
+      category: piece.category,
+      pressingPrice: piece.pressingPrice,
+      cleaningPressingPrice: piece.cleaningPressingPrice,
+      imageUrl: piece.imageUrl || ''
+    });
+  };
+
+  const handleDialogOpenChange = (open: boolean) => {
+    if (!open) {
+      setIsCreatingPiece(false);
+      setEditingPiece(null);
+      resetForm();
+    }
+  };
+
   if (loading) {
     return (
       <div className="space-y-6">
@@ -37,242 +135,14 @@ export const PieceManagement = () => {
     );
   }
 
-  const getCategoryLabel = (category: string) => {
-    switch (category) {
-      case "vetement": return "Vêtement";
-      case "linge": return "Linge";
-      case "accessoire": return "Accessoire";
-      default: return category;
-    }
-  };
+  const filteredPieces = pieces.filter(piece => {
+    const matchesSearch = piece.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         piece.category.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesCategory = categoryFilter === "all" || piece.category === categoryFilter;
+    return matchesSearch && matchesCategory;
+  });
 
-  const getCategoryColor = (category: string) => {
-    switch (category) {
-      case "vetement": return "bg-blue-100 text-blue-800";
-      case "linge": return "bg-green-100 text-green-800";
-      case "accessoire": return "bg-purple-100 text-purple-800";
-      default: return "bg-gray-100 text-gray-800";
-    }
-  };
-
-  const filteredPieces = pieces.filter(piece =>
-    piece.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    piece.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-  const handleAddPiece = async () => {
-    // Validation des champs requis
-    if (!newPiece.name.trim()) {
-      toast.error('Veuillez saisir le nom de la pièce');
-      return;
-    }
-
-    if (newPiece.pressingPrice <= 0 && newPiece.cleaningPressingPrice <= 0) {
-      toast.error('Veuillez saisir au moins un prix supérieur à 0');
-      return;
-    }
-
-    try {
-      const pieceData = {
-        id: `P${Date.now()}`,
-        ...newPiece
-      };
-      
-      await addPiece(pieceData);
-      setNewPiece({
-        name: '',
-        category: 'vetement',
-        pressingPrice: 0,
-        cleaningPressingPrice: 0,
-        description: '',
-        imageUrl: ''
-      });
-      setIsAddingPiece(false);
-      toast.success(`Pièce "${pieceData.name}" ajoutée avec succès`);
-    } catch (error) {
-      console.error('Erreur lors de l\'ajout de la pièce:', error);
-      toast.error('Erreur lors de l\'ajout de la pièce');
-    }
-  };
-
-  const handleEditPiece = (piece: Piece) => {
-    setEditingPiece(piece);
-    setNewPiece({
-      name: piece.name,
-      category: piece.category,
-      pressingPrice: piece.pressingPrice,
-      cleaningPressingPrice: piece.cleaningPressingPrice,
-      description: piece.description || '',
-      imageUrl: piece.imageUrl || ''
-    });
-  };
-  const handleUpdatePiece = async () => {
-    if (editingPiece) {
-      // Validation des champs requis
-      if (!newPiece.name.trim()) {
-        toast.error('Veuillez saisir le nom de la pièce');
-        return;
-      }
-
-      if (newPiece.pressingPrice <= 0 && newPiece.cleaningPressingPrice <= 0) {
-        toast.error('Veuillez saisir au moins un prix supérieur à 0');
-        return;
-      }
-
-      try {
-        const updatedPiece = { ...editingPiece, ...newPiece };
-        await updatePiece(updatedPiece);
-        setEditingPiece(null);
-        setNewPiece({
-          name: '',
-          category: 'vetement',
-          pressingPrice: 0,
-          cleaningPressingPrice: 0,
-          description: '',
-          imageUrl: ''
-        });
-        toast.success(`Pièce "${updatedPiece.name}" mise à jour avec succès`);
-      } catch (error) {
-        console.error('Erreur lors de la mise à jour de la pièce:', error);
-        toast.error('Erreur lors de la mise à jour de la pièce');
-      }
-    }
-  };
-
-  const handleDeletePiece = async (pieceId: string) => {
-    const piece = pieces.find(p => p.id === pieceId);
-    if (!piece) return;
-
-    if (!confirm(`Êtes-vous sûr de vouloir supprimer la pièce "${piece.name}" ? Cette action est irréversible.`)) {
-      return;
-    }
-
-    try {
-      await deletePiece(pieceId);
-      toast.success(`Pièce "${piece.name}" supprimée avec succès`);
-    } catch (error) {
-      console.error('Erreur lors de la suppression de la pièce:', error);
-      toast.error('Erreur lors de la suppression de la pièce');
-    }
-  };
-
-  const PieceDialog = ({ isEdit = false }: { isEdit?: boolean }) => (
-    <DialogContent className="sm:max-w-[500px]">
-      <DialogHeader>
-        <DialogTitle>
-          {isEdit ? 'Modifier la pièce' : 'Ajouter une nouvelle pièce'}
-        </DialogTitle>
-        <DialogDescription>
-          {isEdit ? 'Modifiez les informations de la pièce' : 'Créez un nouveau type de pièce avec ses tarifs'}
-        </DialogDescription>
-      </DialogHeader>
-      
-      <div className="space-y-4">
-        <div>
-          <Label htmlFor="name">Nom de la pièce</Label>
-          <Input
-            id="name"
-            value={newPiece.name}
-            onChange={(e) => setNewPiece({...newPiece, name: e.target.value})}
-            placeholder="Ex: Chemise, Pantalon, Robe..."
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="category">Catégorie</Label>
-          <Select value={newPiece.category} onValueChange={(value: any) => setNewPiece({...newPiece, category: value})}>
-            <SelectTrigger>
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="vetement">Vêtement</SelectItem>
-              <SelectItem value="linge">Linge</SelectItem>
-              <SelectItem value="accessoire">Accessoire</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        
-        <div className="grid grid-cols-2 gap-4">
-          <div>
-            <Label htmlFor="pressingPrice">Prix Repassage (DH)</Label>
-            <Input
-              id="pressingPrice"
-              type="number"
-              step="0.50"
-              min="0"
-              value={newPiece.pressingPrice}
-              onChange={(e) => setNewPiece({...newPiece, pressingPrice: parseFloat(e.target.value) || 0})}
-            />
-          </div>
-          <div>
-            <Label htmlFor="cleaningPressingPrice">Prix Nettoyage + Repassage (DH)</Label>
-            <Input
-              id="cleaningPressingPrice"
-              type="number"
-              step="0.50"
-              min="0"
-              value={newPiece.cleaningPressingPrice}
-              onChange={(e) => setNewPiece({...newPiece, cleaningPressingPrice: parseFloat(e.target.value) || 0})}
-            />
-          </div>
-        </div>
-        
-        <div>
-          <Label htmlFor="description">Description (optionnel)</Label>
-          <Input
-            id="description"
-            value={newPiece.description}
-            onChange={(e) => setNewPiece({...newPiece, description: e.target.value})}
-            placeholder="Description de la pièce..."
-          />
-        </div>
-        
-        <div>
-          <Label htmlFor="imageUrl">URL de l'image (optionnel)</Label>
-          <Input
-            id="imageUrl"
-            value={newPiece.imageUrl}
-            onChange={(e) => setNewPiece({...newPiece, imageUrl: e.target.value})}
-            placeholder="https://example.com/image.jpg"
-          />
-          {newPiece.imageUrl && (
-            <div className="mt-2">
-              <img 
-                src={newPiece.imageUrl} 
-                alt="Aperçu" 
-                className="w-20 h-20 object-cover rounded border"
-                onError={(e) => {
-                  e.currentTarget.style.display = 'none';
-                }}
-              />
-            </div>
-          )}
-        </div>
-        
-        <div className="flex justify-end space-x-2 pt-4">
-          <Button 
-            variant="outline" 
-            onClick={() => {
-              setIsAddingPiece(false);
-              setEditingPiece(null);
-              setNewPiece({
-                name: '',
-                category: 'vetement',
-                pressingPrice: 0,
-                cleaningPressingPrice: 0,
-                description: '',
-                imageUrl: ''
-              });
-            }}
-          >
-            Annuler
-          </Button>
-          <Button onClick={isEdit ? handleUpdatePiece : handleAddPiece}>
-            {isEdit ? 'Mettre à jour' : 'Ajouter'}
-          </Button>
-        </div>
-      </div>
-    </DialogContent>
-  );
+  const categories = [...new Set(pieces.map(piece => piece.category))];
 
   return (
     <div className="space-y-6">
@@ -280,56 +150,39 @@ export const PieceManagement = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
         <div>
           <h2 className="text-2xl font-bold">Gestion des Pièces</h2>
-          <p className="text-gray-600">Gérez les types de pièces et leurs tarifs</p>
+          <p className="text-gray-600">Gérez le catalogue des pièces et leurs tarifs</p>
         </div>
         
-        <Dialog open={isAddingPiece} onOpenChange={setIsAddingPiece}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="w-4 h-4 mr-2" />
-              Nouvelle Pièce
-            </Button>
-          </DialogTrigger>
-          <PieceDialog />
-        </Dialog>
-        
-        <Dialog open={!!editingPiece} onOpenChange={(open) => !open && setEditingPiece(null)}>
-          <PieceDialog isEdit={true} />
-        </Dialog>
+        <Button onClick={() => setIsCreatingPiece(true)}>
+          <Plus className="w-4 h-4 mr-2" />
+          Nouvelle Pièce
+        </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-        <Input
-          placeholder="Rechercher une pièce..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-          className="pl-10"
-        />
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {['vetement', 'linge', 'accessoire'].map(category => {
-          const categoryPieces = pieces.filter(p => p.category === category);
-          return (
-            <Card key={category}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{getCategoryLabel(category)}</CardTitle>
-                <Shirt className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{categoryPieces.length}</div>                <p className="text-xs text-muted-foreground">
-                  Prix moyen: {categoryPieces.length > 0 ? 
-                    (categoryPieces.reduce((sum, p) => sum + p.pressingPrice, 0) / categoryPieces.length).toFixed(2) : 
-                    '0.00'
-                  } DH
-                </p>
-              </CardContent>
-            </Card>
-          );
-        })}
+      {/* Filters */}
+      <div className="flex flex-col sm:flex-row gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+          <Input
+            placeholder="Rechercher une pièce..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-10"
+          />
+        </div>
+        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+          <SelectTrigger className="w-full sm:w-48">
+            <SelectValue placeholder="Filtrer par catégorie" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Toutes les catégories</SelectItem>
+            {categories.map(category => (
+              <SelectItem key={category} value={category}>
+                {category}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       {/* Liste des pièces */}
@@ -337,9 +190,13 @@ export const PieceManagement = () => {
         {filteredPieces.map((piece) => (
           <Card key={piece.id} className="hover:shadow-md transition-shadow">
             <CardHeader className="pb-3">
-              {/* Image de la pièce */}
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">{piece.name}</CardTitle>
+                <Badge variant="secondary">{piece.category}</Badge>
+              </div>
+            </CardHeader>            <CardContent className="space-y-3">
               {piece.imageUrl && (
-                <div className="mb-3">
+                <div className="relative mb-3">
                   <img 
                     src={piece.imageUrl} 
                     alt={piece.name}
@@ -349,30 +206,14 @@ export const PieceManagement = () => {
                     }}
                   />
                 </div>
-              )}
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-lg">{piece.name}</CardTitle>
-                <Badge className={getCategoryColor(piece.category)}>
-                  {getCategoryLabel(piece.category)}
-                </Badge>
-              </div>
-              {piece.description && (
-                <CardDescription>{piece.description}</CardDescription>
-              )}
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <div className="space-y-2">
+              )}              <div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Repassage:</span>                  <span className="font-medium flex items-center">
-                    <Coins className="w-3 h-3 mr-1" />
-                    {piece.pressingPrice.toFixed(2)}
-                  </span>
+                  <span className="text-gray-600">Pressing:</span>
+                  <span className="font-medium">{piece.pressingPrice.toFixed(2)} DH</span>
                 </div>
                 <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-600">Nettoyage + Repassage:</span>                  <span className="font-medium flex items-center">
-                    <Coins className="w-3 h-3 mr-1" />
-                    {piece.cleaningPressingPrice.toFixed(2)}
-                  </span>
+                  <span className="text-gray-600">Nettoyage + Pressing:</span>
+                  <span className="font-medium">{piece.cleaningPressingPrice.toFixed(2)} DH</span>
                 </div>
               </div>
               
@@ -381,7 +222,7 @@ export const PieceManagement = () => {
                   variant="outline"
                   size="sm"
                   className="flex-1"
-                  onClick={() => handleEditPiece(piece)}
+                  onClick={() => startEdit(piece)}
                 >
                   <Edit3 className="w-4 h-4 mr-1" />
                   Modifier
@@ -390,7 +231,7 @@ export const PieceManagement = () => {
                   variant="outline"
                   size="sm"
                   className="text-red-600 hover:text-red-700"
-                  onClick={() => handleDeletePiece(piece.id)}
+                  onClick={() => handleDeletePiece(piece)}
                 >
                   <Trash2 className="w-4 h-4" />
                 </Button>
@@ -403,11 +244,106 @@ export const PieceManagement = () => {
       {filteredPieces.length === 0 && (
         <Card>
           <CardContent className="text-center py-8">
-            <Shirt className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-            <p className="text-gray-600">Aucune pièce trouvée</p>
+            <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+            <p className="text-gray-600">
+              {searchTerm ? 'Aucune pièce trouvée' : 'Aucune pièce disponible'}
+            </p>
           </CardContent>
         </Card>
       )}
+
+      {/* Dialog for creating/editing piece */}
+      <Dialog open={isCreatingPiece || !!editingPiece} onOpenChange={handleDialogOpenChange}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>
+              {editingPiece ? 'Modifier la pièce' : 'Créer une nouvelle pièce'}
+            </DialogTitle>
+            <DialogDescription>
+              {editingPiece 
+                ? 'Modifiez les informations de la pièce' 
+                : 'Ajoutez une nouvelle pièce au catalogue avec ses tarifs'
+              }
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="space-y-4">            <div>
+              <Label htmlFor="name">Nom de la pièce</Label>
+              <Input
+                id="name"
+                value={newPiece.name}
+                onChange={(e) => setNewPiece({...newPiece, name: e.target.value})}
+                placeholder="Ex: Chemise, Pantalon, Robe..."
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="imageUrl">URL de l'image (optionnel)</Label>
+              <Input
+                id="imageUrl"
+                value={newPiece.imageUrl}
+                onChange={(e) => setNewPiece({...newPiece, imageUrl: e.target.value})}
+                placeholder="https://example.com/image.jpg"
+                type="url"
+              />
+            </div><div>
+              <Label htmlFor="category">Catégorie</Label>
+              <Select
+                value={newPiece.category}
+                onValueChange={(value: 'vetement' | 'linge' | 'accessoire') => 
+                  setNewPiece({...newPiece, category: value})
+                }
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionner une catégorie" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="vetement">Vêtement</SelectItem>
+                  <SelectItem value="linge">Linge</SelectItem>
+                  <SelectItem value="accessoire">Accessoire</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="pressingPrice">Prix Pressing (DH)</Label>
+                <Input
+                  id="pressingPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newPiece.pressingPrice}
+                  onChange={(e) => setNewPiece({...newPiece, pressingPrice: parseFloat(e.target.value) || 0})}
+                />
+              </div>
+              <div>
+                <Label htmlFor="cleaningPressingPrice">Prix Nettoyage + Pressing (DH)</Label>
+                <Input
+                  id="cleaningPressingPrice"
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={newPiece.cleaningPressingPrice}
+                  onChange={(e) => setNewPiece({...newPiece, cleaningPressingPrice: parseFloat(e.target.value) || 0})}
+                />
+              </div>
+            </div>
+
+            <div className="flex justify-end space-x-2 pt-4">
+              <Button 
+                variant="outline" 
+                onClick={() => handleDialogOpenChange(false)}
+              >
+                Annuler
+              </Button>
+              <Button 
+                onClick={editingPiece ? handleEditPiece : handleCreatePiece}
+              >
+                {editingPiece ? 'Modifier' : 'Créer'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
