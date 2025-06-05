@@ -19,26 +19,28 @@ export const PieceManagement = () => {
   const [editingPiece, setEditingPiece] = useState<Piece | null>(null);    const [newPiece, setNewPiece] = useState({
     name: '',
     category: 'vetement' as 'vetement' | 'linge' | 'accessoire',
-    pressingPrice: 0,
-    cleaningPressingPrice: 0,
+    pressingPrice: '',
+    cleaningPressingPrice: '',
     imageUrl: ''
   });  const resetForm = () => {
     setNewPiece({
       name: '',
       category: 'vetement' as 'vetement' | 'linge' | 'accessoire',
-      pressingPrice: 0,
-      cleaningPressingPrice: 0,
+      pressingPrice: '',
+      cleaningPressingPrice: '',
       imageUrl: ''
     });
     setEditingPiece(null);
-  };
-  const handleCreatePiece = async () => {
+  };  const handleCreatePiece = async () => {
     if (!newPiece.name || !newPiece.category) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    if (newPiece.pressingPrice < 0 || newPiece.cleaningPressingPrice < 0) {
+    const pressingPrice = parseFloat(newPiece.pressingPrice) || 0;
+    const cleaningPressingPrice = parseFloat(newPiece.cleaningPressingPrice) || 0;
+
+    if (pressingPrice < 0 || cleaningPressingPrice < 0) {
       toast.error('Les prix ne peuvent pas être négatifs');
       return;
     }
@@ -52,6 +54,8 @@ export const PieceManagement = () => {
       const pieceData = {
         id: `PIECE${nextPieceNumber}`,
         ...newPiece,
+        pressingPrice,
+        cleaningPressingPrice,
         createdAt: new Date().toISOString(),
       };
 
@@ -64,14 +68,16 @@ export const PieceManagement = () => {
       toast.error('Erreur lors de la création de la pièce');
     }
   };
-
   const handleEditPiece = async () => {
     if (!editingPiece || !newPiece.name || !newPiece.category) {
       toast.error('Veuillez remplir tous les champs obligatoires');
       return;
     }
 
-    if (newPiece.pressingPrice < 0 || newPiece.cleaningPressingPrice < 0) {
+    const pressingPrice = parseFloat(newPiece.pressingPrice.toString()) || 0;
+    const cleaningPressingPrice = parseFloat(newPiece.cleaningPressingPrice.toString()) || 0;
+
+    if (pressingPrice < 0 || cleaningPressingPrice < 0) {
       toast.error('Les prix ne peuvent pas être négatifs');
       return;
     }
@@ -80,6 +86,8 @@ export const PieceManagement = () => {
       const updatedPiece = {
         ...editingPiece,
         ...newPiece,
+        pressingPrice,
+        cleaningPressingPrice,
         updatedAt: new Date().toISOString(),
       };
 
@@ -105,14 +113,13 @@ export const PieceManagement = () => {
       console.error('Erreur lors de la suppression de la pièce:', error);
       toast.error('Erreur lors de la suppression de la pièce');
     }
-  };
-  const startEdit = (piece: Piece) => {
+  };  const startEdit = (piece: Piece) => {
     setEditingPiece(piece);
     setNewPiece({
       name: piece.name,
       category: piece.category,
-      pressingPrice: piece.pressingPrice,
-      cleaningPressingPrice: piece.cleaningPressingPrice,
+      pressingPrice: piece.pressingPrice.toString(),
+      cleaningPressingPrice: piece.cleaningPressingPrice.toString(),
       imageUrl: piece.imageUrl || ''
     });
   };
@@ -312,7 +319,8 @@ export const PieceManagement = () => {
                   step="0.01"
                   min="0"
                   value={newPiece.pressingPrice}
-                  onChange={(e) => setNewPiece({...newPiece, pressingPrice: parseFloat(e.target.value) || 0})}
+                  onChange={(e) => setNewPiece({...newPiece, pressingPrice: e.target.value})}
+                  placeholder="0.00"
                 />
               </div>
               <div>
@@ -323,7 +331,8 @@ export const PieceManagement = () => {
                   step="0.01"
                   min="0"
                   value={newPiece.cleaningPressingPrice}
-                  onChange={(e) => setNewPiece({...newPiece, cleaningPressingPrice: parseFloat(e.target.value) || 0})}
+                  onChange={(e) => setNewPiece({...newPiece, cleaningPressingPrice: e.target.value})}
+                  placeholder="0.00"
                 />
               </div>
             </div>
