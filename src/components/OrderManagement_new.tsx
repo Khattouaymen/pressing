@@ -871,14 +871,17 @@ export const OrderManagement = () => {  // Available pieces with their prices
                     <div>
                       <span className="text-gray-600">Prêt le:</span>
                       <div className="font-medium">{new Date(order.estimatedDate).toLocaleDateString('fr-FR')}</div>
-                    </div>
-                    <div>
+                    </div>                    <div>
                       <span className="text-gray-600">Montant:</span>
                       <div className="font-medium flex items-center gap-2">
                         €{order.totalAmount.toFixed(2)}
-                        {order.isExceptionalPrice && (
-                          <Badge variant="outline" className="text-xs">
+                        {order.isExceptionalPrice ? (
+                          <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">
                             Prix exceptionnel
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="text-xs text-green-600 border-green-200">
+                            Prix normal
                           </Badge>
                         )}
                       </div>
