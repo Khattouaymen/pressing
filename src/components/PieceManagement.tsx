@@ -202,18 +202,16 @@ export const PieceManagement = () => {
                 <Badge variant="secondary">{piece.category}</Badge>
               </div>
             </CardHeader>            <CardContent className="space-y-3">
-              {piece.imageUrl && (
-                <div className="relative mb-3">
-                  <img 
-                    src={piece.imageUrl} 
-                    alt={piece.name}
-                    className="w-full h-32 object-cover rounded-md border"
-                    onError={(e) => {
-                      e.currentTarget.style.display = 'none';
-                    }}
-                  />
-                </div>
-              )}              <div className="space-y-2">
+              <div className="relative mb-3">
+                <img 
+                  src={piece.imageUrl || 'https://cdn-icons-png.flaticon.com/512/3091/3091811.png'} 
+                  alt={piece.name}
+                  className="w-full h-32 object-cover rounded-md border"
+                  onError={(e) => {
+                    e.currentTarget.src = 'https://via.placeholder.com/300x200/f3f4f6/9ca3af?text=Image+non+disponible';
+                  }}
+                />
+              </div><div className="space-y-2">
                 <div className="flex items-center justify-between text-sm">
                   <span className="text-gray-600">Pressing:</span>
                   <span className="font-medium">{piece.pressingPrice.toFixed(2)} DH</span>
