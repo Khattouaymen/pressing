@@ -331,33 +331,7 @@ export const PieceManagement = () => {
                   <SelectItem value="linge">Linge</SelectItem>
                   <SelectItem value="accessoire">Accessoire</SelectItem>
                 </SelectContent>
-              </Select>
-            </div>            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="pressingPrice">Prix Pressing (DH)</Label>
-                <Input
-                  id="pressingPrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newPiece.pressingPrice}
-                  onChange={(e) => setNewPiece({...newPiece, pressingPrice: e.target.value})}
-                  placeholder="0.00"
-                />
-              </div>
-              <div>
-                <Label htmlFor="cleaningPressingPrice">Prix Nettoyage + Pressing (DH)</Label>
-                <Input
-                  id="cleaningPressingPrice"
-                  type="number"
-                  step="0.01"
-                  min="0"
-                  value={newPiece.cleaningPressingPrice}
-                  onChange={(e) => setNewPiece({...newPiece, cleaningPressingPrice: e.target.value})}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
+              </Select>            </div>
 
             <div className="flex items-center space-x-2">
               <Switch
