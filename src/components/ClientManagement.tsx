@@ -9,17 +9,19 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Plus, Search, Users, Building2, Phone, Mail, MapPin, Calendar, UserCheck } from "lucide-react";
 import { useClients, useProfessionalClients, Client } from '@/hooks/useApiDatabase';
+import { ClientOrderHistory } from './ClientOrderHistory';
 
 export const ClientManagement = () => {
   // Hooks de base de données
   const { clients, loading, addClient } = useClients();
   const { clients: professionalClients, loading: loadingProfessionalClients } = useProfessionalClients();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [clientFormMode, setClientFormMode] = useState<'search' | 'create'>('search');
   const [clientSearchTerm, setClientSearchTerm] = useState("");
   const [selectedExistingClient, setSelectedExistingClient] = useState<Client | null>(null);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [selectedClientForHistory, setSelectedClientForHistory] = useState<any>(null);
   const [newClient, setNewClient] = useState({
     firstName: '',
     lastName: '',
@@ -93,11 +95,11 @@ export const ClientManagement = () => {
         if (newClient.type === 'professional' && !newClient.companyName) {
           toast.error('Veuillez saisir le nom de l\'entreprise');
           return;
-        }
-
-        const clientData = {
+        }        const clientData = {
           id: `CLI${Date.now()}`,
           ...newClient,
+          totalOrders: 0,
+          totalSpent: 0,
           createdAt: new Date().toISOString(),
           ...(newClient.type === 'individual' ? { companyName: undefined, siret: undefined } : {}),
         };
@@ -128,12 +130,16 @@ export const ClientManagement = () => {
       siret: ''
     });
   };
-
   const handleDialogOpenChange = (open: boolean) => {
     setIsAddingClient(open);
     if (!open) {
       resetForm();
     }
+  };
+
+  const handleViewHistory = (client: Client) => {
+    setSelectedClientForHistory(client);
+    setIsHistoryModalOpen(true);
   };
 
   const ClientCard = ({ client }: { client: Client }) => (
@@ -177,8 +183,7 @@ export const ClientManagement = () => {
           <span><strong>{client.totalOrders}</strong> commandes</span>
           <span><strong>{client.totalSpent.toFixed(2)} DH</strong> dépensé</span>
         </div>
-        
-        <Button variant="outline" className="w-full mt-3">
+          <Button variant="outline" className="w-full mt-3" onClick={() => handleViewHistory(client)}>
           Voir l'historique
         </Button>
       </CardContent>
@@ -470,9 +475,17 @@ export const ClientManagement = () => {
             {professionalClientsFiltered.map((client) => (
               <ClientCard key={client.id} client={client} />
             ))}
-          </div>
-        </TabsContent>
+          </div>        </TabsContent>
       </Tabs>
+
+      {/* Modal d'historique des commandes */}
+      {selectedClientForHistory && (
+        <ClientOrderHistory
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          client={selectedClientForHistory}
+        />
+      )}
     </div>
   );
 };

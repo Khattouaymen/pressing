@@ -23,16 +23,18 @@ import {
   Package
 } from "lucide-react";
 import { useProfessionalClients, useProfessionalOrders, usePieces, ProfessionalClient, ProfessionalOrder, Piece } from '@/hooks/useApiDatabase';
+import { ClientOrderHistory } from './ClientOrderHistory';
 
 export const ProfessionalDashboard = () => {
   // Hooks de base de données
   const { clients: professionalClients, loading: clientsLoading, addClient: addProfessionalClient } = useProfessionalClients();
   const { orders: professionalOrders, loading: ordersLoading, addOrder: addProfessionalOrder } = useProfessionalOrders();
   const { pieces, loading: piecesLoading } = usePieces();
-
   const [searchTerm, setSearchTerm] = useState("");
   const [isAddingClient, setIsAddingClient] = useState(false);
   const [isCreatingOrder, setIsCreatingOrder] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
+  const [selectedClientForHistory, setSelectedClientForHistory] = useState<any>(null);
   
   const [newClient, setNewClient] = useState({
     companyName: '',
@@ -242,9 +244,26 @@ export const ProfessionalDashboard = () => {
       });
       toast.success(`Commande ${orderData.id} créée avec succès pour ${selectedClient.companyName}`);
     } catch (error) {
-      console.error('Erreur lors de la création de la commande professionnelle:', error);
-      toast.error('Erreur lors de la création de la commande professionnelle');
+      console.error('Erreur lors de la création de la commande professionnelle:', error);      toast.error('Erreur lors de la création de la commande professionnelle');
     }
+  };
+
+  const handleViewHistory = (client: ProfessionalClient) => {
+    // Adapter le client professionnel au format attendu par ClientOrderHistory
+    const adaptedClient = {
+      id: client.id,
+      firstName: client.contactName.split(' ')[0] || '',
+      lastName: client.contactName.split(' ').slice(1).join(' ') || '',
+      companyName: client.companyName,
+      type: 'professional' as const,
+      phone: client.phone,
+      email: client.email,
+      totalOrders: client.totalOrders,
+      totalSpent: client.totalSpent
+    };
+    
+    setSelectedClientForHistory(adaptedClient);
+    setIsHistoryModalOpen(true);
   };
 
   return (
@@ -673,8 +692,7 @@ export const ProfessionalDashboard = () => {
                     <span><strong>{client.totalOrders}</strong> commandes</span>
                     <span><strong>{client.totalSpent.toFixed(2)} DH</strong> CA total</span>
                   </div>
-                  
-                  <Button variant="outline" className="w-full">
+                    <Button variant="outline" className="w-full" onClick={() => handleViewHistory(client)}>
                     Voir l'historique
                   </Button>
                 </CardContent>
@@ -772,9 +790,17 @@ export const ProfessionalDashboard = () => {
                 Aucune facture en attente
               </div>
             </CardContent>
-          </Card>
-        </TabsContent>
+          </Card>        </TabsContent>
       </Tabs>
+
+      {/* Modal d'historique des commandes */}
+      {selectedClientForHistory && (
+        <ClientOrderHistory
+          isOpen={isHistoryModalOpen}
+          onClose={() => setIsHistoryModalOpen(false)}
+          client={selectedClientForHistory}
+        />
+      )}
     </div>
   );
 };
